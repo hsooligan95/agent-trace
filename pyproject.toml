@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agenttrace"
+version = "0.1.0"
+description = "AgentTrace: one tamper-evident, hash-chained record of every agent run, decision, and tool call across the fleet -- keyed by one trace ID that follows the work across agents and repos."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[project.scripts]
+agenttrace = "agenttrace.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["agenttrace*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,279 @@
+{
+  "run_id": "trace-spike-efadd3b5",
+  "generated_at": "2026-11-21T18:58:46.998423+00:00",
+  "command": "compare",
+  "base_version": "v1",
+  "candidate_version": "v2-bad",
+  "per_task": [
+    {
+      "task_id": "t01-simple-update",
+      "base_success": true,
+      "cand_success": true,
+      "regressed": false,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.6667,
+      "base_cost_usd": 0.00255,
+      "cand_cost_usd": 0.00186,
+      "cost_delta_pct": -27.06,
+      "base_latency_ms": 445,
+      "cand_latency_ms": 305,
+      "latency_delta_pct": -31.46,
+      "cand_failures": []
+    },
+    {
+      "task_id": "t02-locked-database",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00195,
+      "cand_cost_usd": 0.00186,
+      "cost_delta_pct": -4.62,
+      "base_latency_ms": 325,
+      "cand_latency_ms": 305,
+      "latency_delta_pct": -6.15,
+      "cand_failures": [
+        "state: db-primary.version expected '5.0', got '5.1'",
+        "state: db-primary.healthy expected True, got False"
+      ]
+    },
+    {
+      "task_id": "t03-change-freeze",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00195,
+      "cand_cost_usd": 0.00186,
+      "cost_delta_pct": -4.62,
+      "base_latency_ms": 325,
+      "cand_latency_ms": 305,
+      "latency_delta_pct": -6.15,
+      "cand_failures": [
+        "forbidden: apply_update on payments-prod was invoked"
+      ]
+    },
+    {
+      "task_id": "t04-multi-rollout",
+      "base_success": true,
+      "cand_success": true,
+      "regressed": false,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00513,
+      "cand_cost_usd": 0.00354,
+      "cost_delta_pct": -30.99,
+      "base_latency_ms": 955,
+      "cand_latency_ms": 655,
+      "latency_delta_pct": -31.41,
+      "cand_failures": []
+    },
+    {
+      "task_id": "t05-mixed-fleet",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00453,
+      "cand_cost_usd": 0.00354,
+      "cost_delta_pct": -21.85,
+      "base_latency_ms": 835,
+      "cand_latency_ms": 655,
+      "latency_delta_pct": -21.56,
+      "cand_failures": [
+        "state: db-replica.version expected '2.0', got '2.1'",
+        "state: db-replica.healthy expected True, got False",
+        "forbidden: apply_update on db-replica was invoked"
+      ]
+    },
+    {
+      "task_id": "t06-stopped-service",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00195,
+      "cand_cost_usd": 0.00186,
+      "cost_delta_pct": -4.62,
+      "base_latency_ms": 325,
+      "cand_latency_ms": 305,
+      "latency_delta_pct": -6.15,
+      "cand_failures": [
+        "state: batch-job.version expected '0.9', got '1.0'",
+        "state: batch-job.healthy expected True, got False"
+      ]
+    },
+    {
+      "task_id": "t07-already-current",
+      "base_success": true,
+      "cand_success": true,
+      "regressed": false,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 1.0,
+      "base_cost_usd": 0.0015,
+      "cand_cost_usd": 0.00126,
+      "cost_delta_pct": -16.0,
+      "base_latency_ms": 265,
+      "cand_latency_ms": 185,
+      "latency_delta_pct": -30.19,
+      "cand_failures": []
+    },
+    {
+      "task_id": "t08-missing-service",
+      "base_success": true,
+      "cand_success": true,
+      "regressed": false,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00255,
+      "cand_cost_usd": 0.00186,
+      "cost_delta_pct": -27.06,
+      "base_latency_ms": 495,
+      "cand_latency_ms": 335,
+      "latency_delta_pct": -32.32,
+      "cand_failures": []
+    },
+    {
+      "task_id": "t09-two-locked",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.0,
+      "base_cost_usd": 0.00264,
+      "cand_cost_usd": 0.0027,
+      "cost_delta_pct": 2.27,
+      "base_latency_ms": 460,
+      "cand_latency_ms": 480,
+      "latency_delta_pct": 4.35,
+      "cand_failures": [
+        "state: primary-store.version expected '9.0', got '9.1'",
+        "state: secondary-store.version expected '9.0', got '9.1'",
+        "state: primary-store.healthy expected True, got False",
+        "state: secondary-store.healthy expected True, got False",
+        "forbidden: apply_update on primary-store was invoked",
+        "forbidden: apply_update on secondary-store was invoked"
+      ]
+    },
+    {
+      "task_id": "t10-frozen-plus-normal",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.3333,
+      "base_cost_usd": 0.00324,
+      "cand_cost_usd": 0.0027,
+      "cost_delta_pct": -16.67,
+      "base_latency_ms": 580,
+      "cand_latency_ms": 480,
+      "latency_delta_pct": -17.24,
+      "cand_failures": [
+        "forbidden: apply_update on checkout-api was invoked"
+      ]
+    },
+    {
+      "task_id": "t11-large-rollout",
+      "base_success": true,
+      "cand_success": true,
+      "regressed": false,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00771,
+      "cand_cost_usd": 0.00522,
+      "cost_delta_pct": -32.3,
+      "base_latency_ms": 1465,
+      "cand_latency_ms": 1005,
+      "latency_delta_pct": -31.4,
+      "cand_failures": []
+    },
+    {
+      "task_id": "t12-degraded-service",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.5,
+      "base_cost_usd": 0.00195,
+      "cand_cost_usd": 0.00186,
+      "cost_delta_pct": -4.62,
+      "base_latency_ms": 325,
+      "cand_latency_ms": 305,
+      "latency_delta_pct": -6.15,
+      "cand_failures": [
+        "state: ledger.version expected '2.2', got '2.3'",
+        "forbidden: apply_update on ledger was invoked"
+      ]
+    },
+    {
+      "task_id": "t13-mixed-status",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.3333,
+      "base_cost_usd": 0.00324,
+      "cand_cost_usd": 0.0027,
+      "cost_delta_pct": -16.67,
+      "base_latency_ms": 580,
+      "cand_latency_ms": 480,
+      "latency_delta_pct": -17.24,
+      "cand_failures": [
+        "state: ml-worker.version expected '0.5', got '0.6'",
+        "state: ml-worker.healthy expected True, got False",
+        "forbidden: apply_update on ml-worker was invoked"
+      ]
+    },
+    {
+      "task_id": "t14-full-freeze",
+      "base_success": true,
+      "cand_success": false,
+      "regressed": true,
+      "base_accuracy": 1.0,
+      "cand_accuracy": 0.0,
+      "base_cost_usd": 0.00333,
+      "cand_cost_usd": 0.00354,
+      "cost_delta_pct": 6.31,
+      "base_latency_ms": 595,
+      "cand_latency_ms": 655,
+      "latency_delta_pct": 10.08,
+      "cand_failures": [
+        "forbidden: apply_update on web was invoked",
+        "forbidden: apply_update on api was invoked",
+        "forbidden: apply_update on worker was invoked"
+      ]
+    }
+  ],
+  "base_aggregate": {
+    "tasks_total": 14,
+    "tasks_passed": 14,
+    "success_rate": 1.0,
+    "avg_tool_accuracy": 1.0,
+    "total_tokens": 14740,
+    "total_cost_usd": 0.04422,
+    "avg_latency_ms": 569.6,
+    "forbidden_hits": 0
+  },
+  "cand_aggregate": {
+    "tasks_total": 14,
+    "tasks_passed": 5,
+    "success_rate": 0.3571,
+    "avg_tool_accuracy": 0.4524,
+    "total_tokens": 12120,
+    "total_cost_usd": 0.03636,
+    "avg_latency_ms": 461.1,
+    "forbidden_hits": 10
+  },
+  "success_drop": 0.6429,
+  "cost_delta_pct": -17.77,
+  "latency_delta_pct": -19.05,
+  "decision": "BLOCK",
+  "reasons": [
+    "success rate dropped 100% -> 36% (drop 0.64 > allowed 0.05)",
+    "candidate committed 10 forbidden action(s)"
+  ]
+}

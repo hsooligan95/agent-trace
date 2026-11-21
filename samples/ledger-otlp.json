@@ -1,0 +1,3608 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "agentledger"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "agentledger",
+            "version": "0.1.0"
+          },
+          "spans": [
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "20f7b98c9abf2b87",
+              "parentSpanId": "",
+              "name": "run baseline",
+              "kind": 1,
+              "startTimeUnixNano": "1795228091918563602",
+              "endTimeUnixNano": "1795228098216790805",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "run"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "31903d498b15bbf8",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task invoice-approval",
+              "kind": 1,
+              "startTimeUnixNano": "1795228091918686467",
+              "endTimeUnixNano": "1795228092367032402",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "invoice-approval"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "d6a0a1f049cb4842",
+              "parentSpanId": "31903d498b15bbf8",
+              "name": "step extract-total",
+              "kind": 1,
+              "startTimeUnixNano": "1795228091925045591",
+              "endTimeUnixNano": "1795228091925419602",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "invoice-approval"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-total"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "386"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "31"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.008115
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 161.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 161.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "08cf54889e34453b",
+              "parentSpanId": "31903d498b15bbf8",
+              "name": "step check-limit",
+              "kind": 1,
+              "startTimeUnixNano": "1795228092054813241",
+              "endTimeUnixNano": "1795228092055018649",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "invoice-approval"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "check-limit"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "421"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "691"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.05814
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 1191.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 1191.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "3cc5e7017f23f0bf",
+              "parentSpanId": "31903d498b15bbf8",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228092231018638",
+              "endTimeUnixNano": "1795228092231211937",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "invoice-approval"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "350"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "89"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.011925
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 159.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 159.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "cfbf56bd628ce02a",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task ticket-triage",
+              "kind": 1,
+              "startTimeUnixNano": "1795228092516716183",
+              "endTimeUnixNano": "1795228093013273175",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "ticket-triage"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "a3a425e46f3483b8",
+              "parentSpanId": "cfbf56bd628ce02a",
+              "name": "step classify-ticket",
+              "kind": 1,
+              "startTimeUnixNano": "1795228092518326528",
+              "endTimeUnixNano": "1795228092518482582",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "ticket-triage"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-ticket"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "437"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "23"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.00828
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 148.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 148.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "9df13d50779e3eb7",
+              "parentSpanId": "cfbf56bd628ce02a",
+              "name": "step route-queue",
+              "kind": 1,
+              "startTimeUnixNano": "1795228092651563730",
+              "endTimeUnixNano": "1795228092651780855",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "ticket-triage"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "route-queue"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "416"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "475"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.041865
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 1175.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 1175.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "31c275c2bad9c391",
+              "parentSpanId": "cfbf56bd628ce02a",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228092848801381",
+              "endTimeUnixNano": "1795228092849001552",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "ticket-triage"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "356"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "72"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.01074
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 142.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 142.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "07ee5a2f4ca048d5",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task log-extraction",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093157068598",
+              "endTimeUnixNano": "1795228093613036041",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "log-extraction"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "1409ed87422f88ff",
+              "parentSpanId": "07ee5a2f4ca048d5",
+              "name": "step extract-error-code",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093159247745",
+              "endTimeUnixNano": "1795228093159629698",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "log-extraction"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-error-code"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "380"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "60"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0102
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 150.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 150.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "642fb1129b9cbe24",
+              "parentSpanId": "07ee5a2f4ca048d5",
+              "name": "step classify-severity",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093311190333",
+              "endTimeUnixNano": "1795228093311365145",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "log-extraction"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-severity"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "426"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.00774
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 143.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 143.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "d6f40ddc8bb73534",
+              "parentSpanId": "07ee5a2f4ca048d5",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093492462637",
+              "endTimeUnixNano": "1795228093492671320",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "log-extraction"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "349"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "94"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.012285
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 174.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 174.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "35bc0c0e610f4575",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task vendor-choice",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093744772312",
+              "endTimeUnixNano": "1795228094143782555",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "vendor-choice"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "11b955be6ffadcbf",
+              "parentSpanId": "35bc0c0e610f4575",
+              "name": "step extract-budget",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093746276878",
+              "endTimeUnixNano": "1795228093746666943",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "vendor-choice"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-budget"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "376"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "41"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.008715
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 131.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 131.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "87c133cd250f6e47",
+              "parentSpanId": "35bc0c0e610f4575",
+              "name": "step pick-vendor",
+              "kind": 1,
+              "startTimeUnixNano": "1795228093867012735",
+              "endTimeUnixNano": "1795228093867178614",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "vendor-choice"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "pick-vendor"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "413"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "493"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.04317
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 1093.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 1093.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "560d74b7ccdf3d04",
+              "parentSpanId": "35bc0c0e610f4575",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094005563244",
+              "endTimeUnixNano": "1795228094005756864",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "vendor-choice"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "351"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "96"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.012465
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 156.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 156.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "e8329bb298893f41",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task refund-decision",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094278772825",
+              "endTimeUnixNano": "1795228094840528164",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "refund-decision"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "dc6dca7ee37b0ecb",
+              "parentSpanId": "e8329bb298893f41",
+              "name": "step classify-sentiment",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094280451332",
+              "endTimeUnixNano": "1795228094280667977",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "refund-decision"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-sentiment"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "418"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "22"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.00792
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 117.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 117.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "e71874d157cd1ae4",
+              "parentSpanId": "e8329bb298893f41",
+              "name": "step extract-order",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094411864078",
+              "endTimeUnixNano": "1795228094412204419",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "refund-decision"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-order"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "374"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "67"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.010635
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 157.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 157.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "a1aa2146608a57f5",
+              "parentSpanId": "e8329bb298893f41",
+              "name": "step decide-refund",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094546388300",
+              "endTimeUnixNano": "1795228094546538485",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "refund-decision"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "decide-refund"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "418"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "674"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.05682
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 1274.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 1274.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "1e9dd730a08debed",
+              "parentSpanId": "e8329bb298893f41",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094693402418",
+              "endTimeUnixNano": "1795228094693555347",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "refund-decision"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "352"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "66"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.01023
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 166.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 166.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "d70e28018186df5b",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task meeting-summary",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094967567452",
+              "endTimeUnixNano": "1795228095409112761",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "meeting-summary"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "c0dd7d084a32672e",
+              "parentSpanId": "d70e28018186df5b",
+              "name": "step extract-date",
+              "kind": 1,
+              "startTimeUnixNano": "1795228094969024958",
+              "endTimeUnixNano": "1795228094969362694",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "meeting-summary"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-date"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "375"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "40"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.008625
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 130.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 130.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "d91b0649a04b8d2e",
+              "parentSpanId": "d70e28018186df5b",
+              "name": "step classify-type",
+              "kind": 1,
+              "startTimeUnixNano": "1795228095091891289",
+              "endTimeUnixNano": "1795228095092038660",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "meeting-summary"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-type"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "414"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "19"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.007635
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 144.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 144.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "d7685aca563f21b6",
+              "parentSpanId": "d70e28018186df5b",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228095246711592",
+              "endTimeUnixNano": "1795228095246860846",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "meeting-summary"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "351"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "78"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.011115
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 158.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 158.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "59128215b04fe1dc",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task capacity-plan",
+              "kind": 1,
+              "startTimeUnixNano": "1795228095541497555",
+              "endTimeUnixNano": "1795228096053440566",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "capacity-plan"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "1b5321cf1d565d39",
+              "parentSpanId": "59128215b04fe1dc",
+              "name": "step extract-usage",
+              "kind": 1,
+              "startTimeUnixNano": "1795228095543008040",
+              "endTimeUnixNano": "1795228095543381510",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "capacity-plan"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-usage"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "373"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "35"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.00822
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 125.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 125.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "37453a05aeddddea",
+              "parentSpanId": "59128215b04fe1dc",
+              "name": "step pick-tier",
+              "kind": 1,
+              "startTimeUnixNano": "1795228095722834516",
+              "endTimeUnixNano": "1795228095722982788",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "capacity-plan"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "pick-tier"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "409"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "422"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.037785
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 922.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 922.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "c14dd999668039d4",
+              "parentSpanId": "59128215b04fe1dc",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228095870640031",
+              "endTimeUnixNano": "1795228095870785459",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "capacity-plan"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "350"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "114"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0138
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 174.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 174.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "f92471f0206de31a",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task sla-check",
+              "kind": 1,
+              "startTimeUnixNano": "1795228096235735343",
+              "endTimeUnixNano": "1795228096795441929",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "sla-check"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "3bca83183c05070c",
+              "parentSpanId": "f92471f0206de31a",
+              "name": "step classify-region",
+              "kind": 1,
+              "startTimeUnixNano": "1795228096237250885",
+              "endTimeUnixNano": "1795228096237399358",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "sla-check"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-region"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "417"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "20"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.007755
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 100.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 100.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "dd1e62043cff62a8",
+              "parentSpanId": "f92471f0206de31a",
+              "name": "step pick-action",
+              "kind": 1,
+              "startTimeUnixNano": "1795228096419011381",
+              "endTimeUnixNano": "1795228096419204040",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "sla-check"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "pick-action"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "410"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "484"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.04245
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 1284.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 1284.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "51e129eae4f6fa97",
+              "parentSpanId": "f92471f0206de31a",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228096596654133",
+              "endTimeUnixNano": "1795228096596798019",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "sla-check"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "351"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "63"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.00999
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 153.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 153.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "b1837ae8fc55b3d0",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task expense-report",
+              "kind": 1,
+              "startTimeUnixNano": "1795228096954948839",
+              "endTimeUnixNano": "1795228097479967295",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "expense-report"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "408666396b1b5aea",
+              "parentSpanId": "b1837ae8fc55b3d0",
+              "name": "step extract-amount",
+              "kind": 1,
+              "startTimeUnixNano": "1795228096956408267",
+              "endTimeUnixNano": "1795228096956770831",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "expense-report"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "extract-amount"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "extract"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "379"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "67"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.01071
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 197.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 197.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "f25c2fb1542c223f",
+              "parentSpanId": "b1837ae8fc55b3d0",
+              "name": "step classify-category",
+              "kind": 1,
+              "startTimeUnixNano": "1795228097104689145",
+              "endTimeUnixNano": "1795228097104842064",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "expense-report"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-category"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "407"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "14"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.007155
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 94.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 94.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "08afa4f3340c0793",
+              "parentSpanId": "b1837ae8fc55b3d0",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228097323497419",
+              "endTimeUnixNano": "1795228097323661545",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "expense-report"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "350"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "64"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.01005
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 154.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 154.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "97bd4f89dc832fde",
+              "parentSpanId": "20f7b98c9abf2b87",
+              "name": "task access-request",
+              "kind": 1,
+              "startTimeUnixNano": "1795228097628321923",
+              "endTimeUnixNano": "1795228098076130694",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "task"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "access-request"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 0.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "d37de947ddeac122",
+              "parentSpanId": "97bd4f89dc832fde",
+              "name": "step classify-risk",
+              "kind": 1,
+              "startTimeUnixNano": "1795228097629956985",
+              "endTimeUnixNano": "1795228097630116013",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "access-request"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "classify-risk"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "classify"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "405"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "22"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.007725
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 102.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 102.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "b89f7a4d878a2d7d",
+              "parentSpanId": "97bd4f89dc832fde",
+              "name": "step decide-access",
+              "kind": 1,
+              "startTimeUnixNano": "1795228097766173884",
+              "endTimeUnixNano": "1795228097766319312",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "access-request"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "decide-access"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "reason"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "416"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "695"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.058365
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 995.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 995.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            },
+            {
+              "traceId": "efed67689ee55ea552f4949aa93878c0",
+              "spanId": "0fa7e2e3dfce8a50",
+              "parentSpanId": "97bd4f89dc832fde",
+              "name": "step emit-record",
+              "kind": 1,
+              "startTimeUnixNano": "1795228097912371158",
+              "endTimeUnixNano": "1795228097912514102",
+              "attributes": [
+                {
+                  "key": "agentledger.kind",
+                  "value": {
+                    "stringValue": "step"
+                  }
+                },
+                {
+                  "key": "agentledger.agent",
+                  "value": {
+                    "stringValue": "ops-agent"
+                  }
+                },
+                {
+                  "key": "agentledger.run_id",
+                  "value": {
+                    "stringValue": "baseline"
+                  }
+                },
+                {
+                  "key": "agentledger.task_id",
+                  "value": {
+                    "stringValue": "access-request"
+                  }
+                },
+                {
+                  "key": "agentledger.step",
+                  "value": {
+                    "stringValue": "emit-record"
+                  }
+                },
+                {
+                  "key": "agentledger.step_kind",
+                  "value": {
+                    "stringValue": "format"
+                  }
+                },
+                {
+                  "key": "gen_ai.system",
+                  "value": {
+                    "stringValue": "stub"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "frontier"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "354"
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "96"
+                  }
+                },
+                {
+                  "key": "agentledger.cost_usd",
+                  "value": {
+                    "doubleValue": 0.01251
+                  }
+                },
+                {
+                  "key": "agentledger.simulated_latency_ms",
+                  "value": {
+                    "doubleValue": 156.0
+                  }
+                },
+                {
+                  "key": "agentledger.latency_ms",
+                  "value": {
+                    "doubleValue": 156.0
+                  }
+                }
+              ],
+              "status": {
+                "code": 1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

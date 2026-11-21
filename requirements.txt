@@ -1,0 +1,6 @@
+# AgentTrace core has zero runtime dependencies (stdlib only).
+# Development / tests:
+#   pip install -e ".[dev]"
+# The flagship drill additionally drives blast-radius against a moto
+# server; install its frozen requirements into the same venv:
+#   pip install -r ../blast-radius/requirements.txt
