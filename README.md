@@ -15,7 +15,7 @@ It exists because of a measured defect: the portfolio's platform Critic found th
 | **AgentTrace** | **What happened, who decided it, and can you prove the record wasn't altered?** |
 | TraceReplay (concept) | A debugging workflow that will read this store |
 
-LangSmith / Langfuse / Arize trace for *debugging*; none offers a hash-chained, tamper-evident record with decision records built to hand to an assessor, cross-framework and cross-language by construction, as a runnable component rather than a hosted platform. The claim is deliberately narrow — the audit axis only. This is not an observability platform and grows no dashboards (a read-only live view is specced as a conditioned phase 2).
+LangSmith / Langfuse / Arize trace for *debugging*; none offers a hash-chained, tamper-evident record with decision records built to hand to an assessor, cross-framework and cross-language by construction, as a runnable component rather than a hosted platform. The claim is deliberately narrow — the audit axis only. This is not an observability platform; its one visual surface is a read-only live view over the store, built under hard conditions (see "The live dashboard" below).
 
 ## Decision records — fenced, on purpose
 
@@ -83,11 +83,35 @@ The cost line deserves a note, because phase 1's drill couldn't produce it: ledg
 
 The rendered timeline (from the store alone — the renderer never opens a producer file) shows the whole run as one tree: the canary BLOCK decision record, the gate's screening decision record, the kill/resume seam (step 3 starts twice — it was in flight when the kill landed and is replayed on resume, exactly the checkpoint-atomicity window blast-radius documents), the `verify_check … result=FAIL` on checkout-api-3, the rollback steps restoring the initial state, factory-floor's groundedness decision record (`answered`, from the checker's own claim scores), the ledger span tree, and all twelve chaos scenario rows.
 
+## The live dashboard (phase 2)
+
+One page that renders the store while a run is actually executing — fleet status per agent (idle / running / blocked on a pending approval), the live span tree of the active trace, the event stream, the chain-verification status, and the cost column from the ledger events in the store. The screenshot below was captured mid-drill, during blast-radius's remediation beat (note the canary BLOCK decision record and the gate's flagged screening already in the tree):
+
+![AgentTrace live dashboard, mid-drill](dashboard/dashboard-live.png)
+
+```bash
+# watch the real drill execute, events landing as producers emit them:
+.venv/bin/python -m dashboard.run_demo          # -> http://127.0.0.1:8765/
+
+# or replay any existing store (a finished drill, a FlightSim batch):
+.venv/bin/python -m dashboard.server --store drill/output/<trace-id>/store.jsonl
+```
+
+The dashboard exists under five hard design constraints, adopted from the portfolio Critic's ruling — they are the difference between a view over an audit record and a worse Langfuse:
+
+1. **Read-only, absolutely.** No approve / pause / kill / config actions anywhere in the UI or the server; every non-GET request is rejected with 405. Pending approvals are *displayed*, never resolved — approvals happen at the producer, where they happen today.
+2. **Store-only data.** Everything rendered comes from the AgentTrace store through the same query layer the CLI uses (`agenttrace/query.py`) plus the store's own verifier. No side channels, no direct producer connections, no state of its own.
+3. **No platform features.** No accounts, no alerting, no historical analytics, no settings. One page: fleet status, live span tree / timeline, event stream, chain status, cost column.
+4. **Capped shape.** A single static page served by a tiny stdlib-only Python server (no new dependencies), live-updating by polling a read-only JSON endpoint. A feature that can't fit this shape is cut, not the conditions.
+5. **Honest liveness.** The demo path runs the actual drill as a subprocess and ingests each producer artifact as it is emitted, so what renders is a run actually executing — including the kill -9 gap and the resume. The feed is never simulated or pre-scripted; when nothing is running, the page says so.
+
+What it deliberately does not do: act on anything, chart history, or keep any state between polls. If a datum is not a chained event in the store, it is not on the screen.
+
 ## Quickstart
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 31 tests
+.venv/bin/python -m pytest        # 38 tests
 
 # store operations over the bundled producer samples:
 .venv/bin/python -m agenttrace.cli ingest --store /tmp/demo.jsonl \
@@ -126,6 +150,9 @@ agenttrace/
   query.py      query layer (by trace ID / agent / source / type / kind)
   render.py     one-page tree/timeline from the store alone
   cli.py        ingest / verify / query / render
+dashboard/      the read-only live view (server.py: stdlib-only server;
+                index.html: the single page; run_demo.py: runs the real
+                drill and ingests artifacts as producers emit them)
 drill/          the flagship drill (run_drill.py + gate_driver.mjs)
 samples/        real producer outputs used by the contract tests
 tests/          schema, store/chain/tamper, ingest contracts, decisions, query/render
@@ -135,7 +162,7 @@ tests/          schema, store/chain/tamper, ingest contracts, decisions, query/r
 
 - **Mechanism, not practice.** The drill's agents run on stub/scripted models against a mock cloud. The trace demonstrates the capture, chaining, decision-record, and verification mechanism end-to-end; it does not prove the practice at production volume with real agents or real assessors, and "audit-grade" should not be read as claiming otherwise.
 - **The ledger join covers stamped runs only.** A ledger run joins an external trace only when the run was stamped (`--trace-id` / `AGENTTRACE_TRACE_ID` on the sample agent, or `external_trace_id` on the Ledger). Unstamped exports still land under their native OTLP trace IDs — the ingestor never guesses a mapping the producer didn't declare.
-- **The dashboard is not built.** A real-time visual view over this store is specced under hard conditions (read-only, store-only data, no platform features). Nothing in this repo renders live state yet.
+- **The dashboard is a view, not a control plane.** It renders the store read-only under the five conditions above; it cannot approve, pause, kill, or configure anything, and it shows only what the store already holds — a run that emits nothing renders nothing.
 - **No redaction at capture yet.** The concept calls for screening tool inputs/outputs on the way into the store (reusing gate's patterns). The demo fleet's stored payloads are producer audit records, which already carry excerpts rather than raw secrets — but a general redaction stage is phase 2, and a production deployment should not ingest raw tool payloads without it.
 
 ## License

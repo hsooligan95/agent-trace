@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentTrace — Live Audit View</title>
+<style>
+  :root{
+    --bg:#0a0c0e; --panel:#101318; --panel2:#0d1013; --line:#1f242c;
+    --ink:#c7cdd4; --dim:#6e7784; --faint:#454d57;
+    --accent:#e8a33d; --ok:#43b581; --bad:#e5534b;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);
+       font-size:13px;line-height:1.45;padding:14px 18px 28px}
+  a{color:var(--accent)}
+  /* header */
+  header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+         border-bottom:1px solid var(--line);padding-bottom:10px}
+  .mark{font-size:17px;letter-spacing:.14em;font-weight:700;color:#e8ebee}
+  .mark .sq{color:var(--accent)}
+  .tag{color:var(--dim);letter-spacing:.22em;font-size:11px}
+  .spacer{flex:1}
+  .pill{display:inline-block;padding:2px 10px;border:1px solid var(--line);
+        border-radius:2px;font-size:12px;letter-spacing:.06em}
+  .pill.ok{color:var(--ok);border-color:var(--ok)}
+  .pill.broken{color:#fff;background:var(--bad);border-color:var(--bad);font-weight:700}
+  .pill.empty,.pill.error{color:var(--dim)}
+  .live{font-size:11px;letter-spacing:.18em;color:var(--dim)}
+  .live.on{color:var(--ok)}
+  .live .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+             background:var(--faint);margin-right:5px;vertical-align:1px}
+  .live.on .dot{background:var(--ok);animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  /* stat strip */
+  .stats{display:flex;gap:26px;flex-wrap:wrap;padding:10px 2px 2px;color:var(--dim)}
+  .stats b{color:var(--ink);font-weight:600}
+  .stats .k{font-size:10px;letter-spacing:.2em;display:block;color:var(--faint)}
+  /* pending approvals */
+  #pending{display:none;margin-top:12px;border:1px solid var(--accent);
+           background:#171307;padding:8px 12px;color:#e9d9b8}
+  #pending .h{color:var(--accent);letter-spacing:.14em;font-size:11px;font-weight:700}
+  #pending div{margin-top:3px}
+  /* fleet strip */
+  .fleet{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);
+         margin-top:14px;overflow-x:auto}
+  .cell{background:var(--panel);padding:9px 12px;min-width:178px;flex:1}
+  .cell .name{font-size:12px;letter-spacing:.08em;color:#e8ebee;white-space:nowrap}
+  .cell .st{font-size:10px;letter-spacing:.2em;margin:3px 0 5px}
+  .lamp{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
+  .st-running{color:var(--ok)} .st-running .lamp{background:var(--ok);animation:pulse 1.2s infinite}
+  .st-blocked{color:var(--accent)} .st-blocked .lamp{background:var(--accent)}
+  .st-idle{color:var(--faint)} .st-idle .lamp{background:var(--faint)}
+  .cell .last{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;
+              text-overflow:ellipsis;max-width:230px}
+  .cell .meta{color:var(--faint);font-size:11px;margin-top:2px}
+  .cell .cost{color:var(--ink)}
+  /* main split */
+  main{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px;margin-top:14px}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  section{background:var(--panel2);border:1px solid var(--line);padding:10px 12px;min-width:0}
+  section h2{font-size:11px;letter-spacing:.22em;color:var(--dim);margin:0 0 8px;font-weight:600}
+  section h2 .sub{color:var(--faint);letter-spacing:.05em}
+  .branch{color:var(--accent);font-size:12px;margin:10px 0 4px;letter-spacing:.05em}
+  .branch:first-of-type{margin-top:2px}
+  .row{display:flex;gap:8px;padding:1px 4px;white-space:nowrap;overflow:hidden}
+  .row .seq{color:var(--faint);min-width:38px;text-align:right}
+  .row .ts{color:var(--dim)}
+  .row .type{color:#9fb4c7;min-width:128px}
+  .row .sum{color:var(--ink);overflow:hidden;text-overflow:ellipsis}
+  .row.decision{background:#171307;box-shadow:inset 2px 0 0 var(--accent)}
+  .row.decision .type{color:var(--accent)}
+  .row.brokenrow{background:#2a0f0e;box-shadow:inset 2px 0 0 var(--bad)}
+  .row.new{animation:flash 1.6s}
+  @keyframes flash{0%{background:#233018}100%{background:transparent}}
+  .stream .row .src{color:var(--accent);min-width:104px;overflow:hidden;text-overflow:ellipsis}
+  .empty-note{color:var(--faint);padding:8px 4px}
+  footer{margin-top:16px;color:var(--faint);font-size:11px;letter-spacing:.06em;
+         border-top:1px solid var(--line);padding-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">AGENT<span class="sq">TRACE</span></div>
+  <div class="tag">LIVE AUDIT VIEW</div>
+  <div class="spacer"></div>
+  <span class="live" id="live"><span class="dot"></span><span id="livetxt">CONNECTING</span></span>
+  <span class="pill empty" id="chain">CHAIN —</span>
+</header>
+
+<div class="stats">
+  <div><span class="k">STORE</span><b id="store">—</b></div>
+  <div><span class="k">ACTIVE TRACE</span><b id="trace">—</b></div>
+  <div><span class="k">EVENTS</span><b id="count">0</b></div>
+  <div><span class="k">COST (LEDGER EVENTS)</span><b id="cost">—</b></div>
+  <div><span class="k">PENDING APPROVALS</span><b id="pendn">0</b></div>
+  <div><span class="k">UPDATED</span><b id="clock">—</b></div>
+</div>
+
+<div id="pending"><span class="h">PENDING APPROVAL — DISPLAY ONLY.</span>
+  <span>Approvals are resolved at the producer, never in this view.</span>
+  <div id="pendinglist"></div>
+</div>
+
+<div class="fleet" id="fleet"></div>
+
+<main>
+  <section>
+    <h2>SPAN TREE / TIMELINE <span class="sub" id="treesub"></span></h2>
+    <div id="tree"><div class="empty-note">No events yet — waiting for a run to write to the store.</div></div>
+  </section>
+  <section class="stream">
+    <h2>EVENT STREAM <span class="sub">newest first · store order</span></h2>
+    <div id="stream"><div class="empty-note">—</div></div>
+  </section>
+</main>
+
+<footer>READ-ONLY VIEW — every element on this page is rendered from chained events in the
+  AgentTrace store, through the same query layer as the CLI. This page has no controls,
+  no accounts, and no state of its own, by design.</footer>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hhmmss = ts => { if(!ts) return "—"; const d = new Date(ts); return isNaN(d) ? ts : d.toLocaleTimeString("en-GB"); };
+let lastCount = -1, lastSeq = 0, lastChange = Date.now();
+
+function render(st){
+  // chain pill
+  const c = st.chain, pill = $("chain");
+  if (c.status === "ok"){ pill.className = "pill ok"; pill.textContent = "CHAIN VERIFIED — " + c.count + " EVENTS"; }
+  else if (c.status === "broken"){ pill.className = "pill broken"; pill.textContent = "CHAIN BROKEN @ SEQ " + c.broken_seq; }
+  else if (c.status === "empty"){ pill.className = "pill empty"; pill.textContent = "CHAIN — EMPTY STORE"; }
+  else { pill.className = "pill error"; pill.textContent = "CHAIN " + c.status.toUpperCase(); }
+
+  $("store").textContent = st.store;
+  $("trace").textContent = st.active_trace || "—";
+  $("count").textContent = st.events;
+  $("cost").textContent = st.cost.spans
+    ? "$" + st.cost.total_usd.toFixed(5) + " · " + st.cost.spans + " spans · " + st.cost.billable_steps + " steps"
+    : "—";
+  $("pendn").textContent = st.pending_approvals.length;
+  $("clock").textContent = new Date().toLocaleTimeString("en-GB");
+
+  // pending approvals (display only)
+  const pb = $("pending");
+  if (st.pending_approvals.length){
+    pb.style.display = "block";
+    $("pendinglist").innerHTML = st.pending_approvals.map(p =>
+      "<div>#" + p.seq + " · " + esc(p.source) + " · " + esc(p.what) +
+      (p.detail ? " — " + esc(p.detail) : "") + " · since " + hhmmss(p.ts) + "</div>").join("");
+  } else pb.style.display = "none";
+
+  // fleet strip
+  $("fleet").innerHTML = st.fleet.map(f =>
+    '<div class="cell"><div class="name">' + esc(f.source) + '</div>' +
+    '<div class="st st-' + f.status + '"><span class="lamp"></span>' + f.status.toUpperCase() + '</div>' +
+    '<div class="last">' + (f.last_type ? esc(f.last_type) + (f.last_summary ? " — " + esc(f.last_summary) : "") : "no events yet") + '</div>' +
+    '<div class="meta">' + f.events + ' events · last ' + hhmmss(f.last_ts) +
+    (f.cost_usd ? ' · <span class="cost">$' + f.cost_usd.toFixed(5) + '</span>' : '') + '</div></div>'
+  ).join("");
+
+  // span tree / timeline
+  const brokenSeq = (c.status === "broken") ? c.broken_seq : null;
+  if (st.tree.length){
+    $("treesub").textContent = "— " + (st.active_trace || "");
+    $("tree").innerHTML = st.tree.map(b =>
+      '<div class="branch">▸ ' + esc(b.source) + ' (' + b.events.length + (b.truncated ? "+, truncated" : "") + ')</div>' +
+      b.events.map(e =>
+        '<div class="row' + (e.kind === "decision_record" ? " decision" : "") +
+          (e.seq === brokenSeq ? " brokenrow" : "") + (e.seq > lastSeq && lastSeq ? " new" : "") +
+          '" style="padding-left:' + (4 + (e.depth || 0) * 18) + 'px">' +
+          '<span class="seq">#' + e.seq + '</span><span class="ts">' + hhmmss(e.ts) + '</span>' +
+          '<span class="type">' + esc(e.type) + '</span><span class="sum">' + esc(e.summary) + '</span></div>'
+      ).join("")
+    ).join("");
+  } else {
+    $("treesub").textContent = "";
+    $("tree").innerHTML = '<div class="empty-note">No events yet — waiting for a run to write to the store.</div>';
+  }
+
+  // event stream
+  if (st.stream.length){
+    $("stream").innerHTML = st.stream.map(e =>
+      '<div class="row' + (e.kind === "decision_record" ? " decision" : "") + (e.seq === brokenSeq ? " brokenrow" : "") + '">' +
+      '<span class="seq">#' + e.seq + '</span><span class="ts">' + hhmmss(e.ts) + '</span>' +
+      '<span class="src">' + esc(e.source) + '</span><span class="sum">' + esc(e.type) +
+      (e.summary ? " — " + esc(e.summary) : "") + '</span></div>'
+    ).join("");
+  } else $("stream").innerHTML = '<div class="empty-note">—</div>';
+
+  // liveness: honest — "live" only while new events are actually landing
+  if (st.events !== lastCount){
+    if (lastCount >= 0) lastChange = Date.now();
+    lastCount = st.events;
+    lastSeq = st.stream.length ? Math.max.apply(null, st.stream.map(e => e.seq)) : lastSeq;
+  }
+  const live = $("live");
+  if (Date.now() - lastChange < 4000 && st.events > 0){
+    live.className = "live on"; $("livetxt").textContent = "LIVE — EVENTS LANDING";
+  } else {
+    live.className = "live"; $("livetxt").textContent = st.events ? "TAILING — NO NEW EVENTS" : "TAILING — STORE EMPTY";
+  }
+}
+
+async function poll(){
+  try { const r = await fetch("/api/state", {cache:"no-store"}); render(await r.json()); }
+  catch(e){ $("livetxt").textContent = "SERVER UNREACHABLE"; $("live").className = "live"; }
+}
+poll(); setInterval(poll, 1000);
+</script>
+</body>
+</html>
