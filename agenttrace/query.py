@@ -5,6 +5,8 @@ is not a chained event in the store, it is not queryable.
 
 from __future__ import annotations
 
+import re
+
 
 def query_events(events: list[dict], *, trace_id: str | None = None,
                  agent: str | None = None, source: str | None = None,
@@ -156,6 +158,242 @@ def trace_tree(events: list[dict], trace_id: str) -> list[dict]:
             })
         branches.append({"source": source, "events": nodes})
     return branches
+
+
+# ---------------------------------------------------------------------
+# Dashboard view-models (phase 2 hybrid page): fleet-graph nodes,
+# drill-beat progress, decision-record cards, cost breakdown. Like
+# everything above, they are derived from stored events alone through
+# this query layer -- the dashboard server adds no data of its own.
+# ---------------------------------------------------------------------
+
+_STEP_KEY_RE = re.compile(r"step (s\d+)/")
+
+
+def _step_key(event: dict):
+    m = _STEP_KEY_RE.search(event["payload"].get("detail") or "")
+    if m:
+        return m.group(1)
+    p = event["payload"]
+    return (p.get("action"), p.get("resource"))
+
+
+def _kill_seam(br_events: list[dict]):
+    """The kill -9 seam in a blast-radius run: a step_started whose step
+    was already started earlier -- the step that was in flight when the
+    executor died, replayed on resume. None when no step repeats."""
+    seen = set()
+    for e in br_events:
+        if e["type"] == "step_started":
+            key = _step_key(e)
+            if key in seen:
+                return e
+            seen.add(key)
+    return None
+
+
+_BEAT_DEFS = [
+    ("block", "BLOCK", "canary stops the candidate"),
+    ("flagged", "FLAGGED", "gate screens the tool result"),
+    ("plan", "PLAN", "blast-radius plan, approved"),
+    ("kill", "KILL -9", "executor dies mid-step — replayed on resume"),
+    ("rollback", "ROLLBACK", "verify fails → state restored"),
+    ("answered", "ANSWERED", "grounded QA reply"),
+    ("costed", "COSTED", "ledger spans joined by the trace ID"),
+    ("matrix", "MATRIX DONE", "chaos scenario matrix"),
+]
+
+
+def drill_progress(events: list[dict], trace_id: str) -> dict:
+    """Drill-beat progress for one trace, from the store alone.
+
+    Each beat lights when its trigger event exists in the trace: the
+    canary verdict, the gate screening, the blast-radius plan, the
+    kill -9 seam (a step started twice), the rollback, the QA outcome,
+    the first ledger span, the chaos report. The most recently lit
+    beat is the frontier while the run is incomplete.
+    """
+    mine = query_events(events, trace_id=trace_id)
+
+    def first(source, type_):
+        for e in mine:
+            if e["source"] == source and e["type"] == type_:
+                return e
+        return None
+
+    br = [e for e in mine if e["source"] == "blast-radius"]
+    rollback_ev = next((e for e in br if e["type"] in
+                        ("rollback_step", "rollback_step_skipped")), None)
+    if rollback_ev is None:
+        rollback_ev = next((e for e in br if e["type"] == "run_finished"
+                            and e["payload"].get("result") == "rolled_back"), None)
+    triggers = {
+        "block": first("agent-canary", "compare_verdict"),
+        "flagged": first("agent-gate", "screening_findings"),
+        "plan": first("blast-radius", "plan_created"),
+        "kill": _kill_seam(br),
+        "rollback": rollback_ev,
+        "answered": first("factory-floor-agent", "outcome"),
+        "costed": first("agent-ledger", "span"),
+        "matrix": first("agent-chaos", "chaos_report"),
+    }
+    beats, last_lit = [], -1
+    for i, (key, label, desc) in enumerate(_BEAT_DEFS):
+        t = triggers[key]
+        if t is not None:
+            last_lit = i
+        beats.append({
+            "key": key, "label": label, "desc": desc, "lit": t is not None,
+            "seq": t["seq"] if t else None, "ts": t["ts"] if t else None,
+            "detail": summarize_event(t) if t else "", "frontier": False,
+        })
+    complete = all(b["lit"] for b in beats)
+    if not complete and last_lit >= 0:
+        beats[last_lit]["frontier"] = True
+    return {"beats": beats, "complete": complete}
+
+
+def decision_records(events: list[dict], trace_id: str) -> list[dict]:
+    """Decision-record cards for one trace, in store order."""
+    out = []
+    for e in query_events(events, trace_id=trace_id, kind="decision_record"):
+        p = e["payload"]
+        out.append({
+            "seq": e["seq"], "ts": e["ts"], "source": e["source"],
+            "decision_point": p.get("decision_point") or e["type"],
+            "choice": p.get("choice") or "",
+            "summary": summarize_event(e),
+        })
+    return out
+
+
+def cost_breakdown(events: list[dict], limit: int = 5) -> list[dict]:
+    """Top billable ledger steps by cost, plus a remainder row.
+
+    The cost bars of the dashboard: labels are task / step pairs from
+    the span attributes; costs are the spans' agentledger.cost_usd.
+    """
+    steps = [e for e in query_events(events, source="agent-ledger")
+             if e["payload"].get("attributes", {}).get("agentledger.kind") == "step"]
+    rows = []
+    for e in steps:
+        a = e["payload"]["attributes"]
+        label = (f"{a.get('agentledger.task_id', '?')} / "
+                 f"{a.get('agentledger.step', e['payload'].get('name', ''))}")
+        rows.append({"label": label,
+                     "cost_usd": round(float(a.get("agentledger.cost_usd", 0.0)), 5)})
+    rows.sort(key=lambda r: -r["cost_usd"])
+    if len(rows) > limit:
+        rest = rows[limit:]
+        rows = rows[:limit] + [{
+            "label": f"+ {len(rest)} further billable steps",
+            "cost_usd": round(sum(r["cost_usd"] for r in rest), 5),
+        }]
+    return rows
+
+
+def graph_nodes(events: list[dict], trace_id: str, *, now: float) -> list[dict]:
+    """Fleet-graph nodes for one trace: per-producer status, a headline
+    verdict and a one-line detail, all derived from the trace's events.
+    Counts are per-trace (what this run emitted), status comes from the
+    fleet view over the whole store."""
+    fleet = {f["source"]: f for f in fleet_status(events, now=now)}
+    pending = {p["source"] for p in pending_approvals(events)}
+    mine_all = query_events(events, trace_id=trace_id)
+    sources = list(KNOWN_SOURCES) + sorted(
+        {e["source"] for e in mine_all} - set(KNOWN_SOURCES))
+    nodes = []
+    for source in sources:
+        mine = [e for e in mine_all if e["source"] == source]
+        f = fleet.get(source)
+        status = f["status"] if f else "idle"
+        headline, detail, tone = _node_story(source, mine, status,
+                                             source in pending)
+        nodes.append({
+            "source": source, "status": status, "tone": tone,
+            "headline": headline, "detail": detail, "events": len(mine),
+            "last_ts": mine[-1]["ts"] if mine else None,
+            "last_type": mine[-1]["type"] if mine else None,
+        })
+    return nodes
+
+
+def _node_story(source: str, mine: list[dict], status: str,
+                is_pending: bool) -> tuple[str, str, str]:
+    """(headline, detail, tone) for one graph node, from its events."""
+    if not mine:
+        return "—", "no events yet", "idle"
+    last = mine[-1]
+    if is_pending and source == "blast-radius" \
+            and not any(e["type"] == "run_finished" for e in mine):
+        return "AWAITING APPROVAL", summarize_event(last), "warn"
+    if source == "agent-canary":
+        v = next((e for e in mine if e["type"] == "compare_verdict"), None)
+        if v:
+            p = v["payload"]
+            dec = p.get("decision") or "VERDICT"
+            b = (p.get("base_aggregate") or {}).get("success_rate")
+            c = (p.get("cand_aggregate") or {}).get("success_rate")
+            forb = (p.get("cand_aggregate") or {}).get("forbidden_hits")
+            detail = ""
+            if b is not None and c is not None:
+                detail = f"success {b:.0%} → {c:.0%}"
+                if forb:
+                    detail += f" · {forb} forbidden"
+            return dec, detail or summarize_event(v), \
+                "bad" if dec == "BLOCK" else "ok"
+    if source == "agent-gate":
+        s = next((e for e in mine if e["type"] == "screening_findings"), None)
+        if s:
+            return "FLAGGED", \
+                f"{len(s['payload'].get('findings', []))} screening patterns matched", \
+                "warn"
+    if source == "blast-radius":
+        seam = _kill_seam(mine)
+        fin = next((e for e in reversed(mine) if e["type"] == "run_finished"), None)
+        if fin:
+            result = fin["payload"].get("result") or ""
+            bits = []
+            if seam:
+                bits.append("kill -9 · replayed")
+            if any(e["type"] == "verify_failed" for e in mine):
+                bits.append("verify FAIL")
+            bits.append(result.replace("_", " "))
+            return result.replace("_", " ").upper() or "FINISHED", \
+                " · ".join(bits), "warn" if result == "rolled_back" else "ok"
+        if seam:
+            return "KILLED -9", "step replayed on resume", "bad"
+    if source == "factory-floor-agent":
+        o = next((e for e in reversed(mine) if e["type"] == "outcome"), None)
+        if o:
+            out = o["payload"].get("outcome") or ""
+            g = next((e for e in mine if e["type"] == "groundedness"), None)
+            detail = ""
+            if g:
+                gp = g["payload"]
+                detail = (f"grounded={gp.get('grounded')} · "
+                          f"{len(gp.get('claims', []))} claims · "
+                          f"thr {gp.get('threshold')}")
+            return out.upper() or "DONE", detail or summarize_event(o), \
+                "ok" if out == "answered" else "warn"
+    if source == "agent-ledger":
+        cs = cost_summary(mine)
+        if cs["spans"]:
+            return "COSTED", f"{cs['spans']} spans · ${cs['total_usd']:.5f}", "idle"
+    if source == "agent-chaos":
+        r = next((e for e in reversed(mine) if e["type"] == "chaos_report"), None)
+        if r:
+            h = r["payload"].get("headline", {})
+            off = h.get("silent_failure_rate_defenses_off")
+            on = h.get("silent_failure_rate_defenses_on")
+            detail = f"silent-failure {off} → {on}" if off is not None \
+                else summarize_event(r)
+            return "MATRIX DONE", detail, "idle"
+    if status == "running":
+        return "RUNNING", summarize_event(last), "run"
+    if status == "blocked":
+        return "BLOCKED", summarize_event(last), "warn"
+    return status.upper(), summarize_event(last), "idle"
 
 
 def summarize_event(event: dict) -> str:

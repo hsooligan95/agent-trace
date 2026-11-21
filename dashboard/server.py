@@ -100,6 +100,15 @@ def build_state(path: Path) -> dict:
         "cost": query_mod.cost_summary(events),
         "tree": tree,
         "stream": stream,
+        # Hybrid page view-models (fleet graph + beat ribbon + cards):
+        # same query layer, same store, nothing server-side.
+        "nodes": query_mod.graph_nodes(events, active_trace, now=time.time())
+                 if active_trace else [],
+        "beats": query_mod.drill_progress(events, active_trace)
+                 if active_trace else {"beats": [], "complete": False},
+        "decisions": query_mod.decision_records(events, active_trace)
+                     if active_trace else [],
+        "cost_steps": query_mod.cost_breakdown(events),
     }
 
 

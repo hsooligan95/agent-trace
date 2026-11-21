@@ -3,100 +3,134 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgentTrace — Live Audit View</title>
+<title>AgentTrace — Fleet Graph · Ops Console</title>
 <style>
   :root{
-    --bg:#0a0c0e; --panel:#101318; --panel2:#0d1013; --line:#1f242c;
-    --ink:#c7cdd4; --dim:#6e7784; --faint:#454d57;
-    --accent:#e8a33d; --ok:#43b581; --bad:#e5534b;
+    --bg:#07090b; --panel:#0e1116; --panel2:#0a0d11; --line:#1e242e; --line2:#2a313d;
+    --ink:#ccd3db; --dim:#77808d; --faint:#49525f;
+    --amber:#e8a33d; --ok:#43b581; --bad:#e5534b; --blue:#7aa2c9;
+    --orange:#e08a3c; --teal:#3fa7a0; --purple:#9a7fd4;
     --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{background:var(--bg);color:var(--ink);font-family:var(--mono);
-       font-size:13px;line-height:1.45;padding:14px 18px 28px}
-  a{color:var(--accent)}
+       font-size:13px;line-height:1.5;padding:16px 20px 26px}
+  a{color:var(--amber)}
   /* header */
-  header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
-         border-bottom:1px solid var(--line);padding-bottom:10px}
-  .mark{font-size:17px;letter-spacing:.14em;font-weight:700;color:#e8ebee}
-  .mark .sq{color:var(--accent)}
-  .tag{color:var(--dim);letter-spacing:.22em;font-size:11px}
+  header{display:flex;align-items:center;gap:18px;border-bottom:1px solid var(--line);
+         padding-bottom:11px;flex-wrap:wrap}
+  .mark{font-size:18px;font-weight:700;letter-spacing:.16em;color:#eceff3}
+  .mark i{font-style:normal;color:var(--amber)}
+  .tag{font-size:10px;letter-spacing:.3em;color:var(--dim)}
   .spacer{flex:1}
-  .pill{display:inline-block;padding:2px 10px;border:1px solid var(--line);
-        border-radius:2px;font-size:12px;letter-spacing:.06em}
+  .pill{display:inline-block;border:1px solid var(--line);color:var(--dim);
+        padding:3px 12px;font-size:12px;letter-spacing:.08em;border-radius:2px}
   .pill.ok{color:var(--ok);border-color:var(--ok)}
+  .pill.ok b{color:#dff5e9}
   .pill.broken{color:#fff;background:var(--bad);border-color:var(--bad);font-weight:700}
-  .pill.empty,.pill.error{color:var(--dim)}
-  .live{font-size:11px;letter-spacing:.18em;color:var(--dim)}
+  .live{font-size:11px;letter-spacing:.2em;color:var(--dim)}
   .live.on{color:var(--ok)}
   .live .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
-             background:var(--faint);margin-right:5px;vertical-align:1px}
+             background:var(--faint);margin-right:6px;vertical-align:1px}
   .live.on .dot{background:var(--ok);animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  /* stat strip */
-  .stats{display:flex;gap:26px;flex-wrap:wrap;padding:10px 2px 2px;color:var(--dim)}
-  .stats b{color:var(--ink);font-weight:600}
-  .stats .k{font-size:10px;letter-spacing:.2em;display:block;color:var(--faint)}
+  /* stat strip (ops console) */
+  .stats{display:flex;border:1px solid var(--line);margin-top:14px;background:var(--panel2);
+         flex-wrap:wrap}
+  .stat{flex:1;padding:9px 14px;border-right:1px solid var(--line);min-width:150px}
+  .stat:last-child{border-right:none}
+  .stat .k{font-size:9px;letter-spacing:.26em;color:var(--faint);display:block}
+  .stat .v{font-size:15px;color:#eceff3;font-weight:600;white-space:nowrap}
+  .stat .v small{font-size:11px;color:var(--dim);font-weight:400}
   /* pending approvals */
-  #pending{display:none;margin-top:12px;border:1px solid var(--accent);
+  #pending{display:none;margin-top:12px;border:1px solid var(--amber);
            background:#171307;padding:8px 12px;color:#e9d9b8}
-  #pending .h{color:var(--accent);letter-spacing:.14em;font-size:11px;font-weight:700}
+  #pending .h{color:var(--amber);letter-spacing:.14em;font-size:11px;font-weight:700}
   #pending div{margin-top:3px}
-  /* fleet strip */
-  .fleet{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);
-         margin-top:14px;overflow-x:auto}
-  .cell{background:var(--panel);padding:9px 12px;min-width:178px;flex:1}
-  .cell .name{font-size:12px;letter-spacing:.08em;color:#e8ebee;white-space:nowrap}
-  .cell .st{font-size:10px;letter-spacing:.2em;margin:3px 0 5px}
-  .lamp{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
-  .st-running{color:var(--ok)} .st-running .lamp{background:var(--ok);animation:pulse 1.2s infinite}
-  .st-blocked{color:var(--accent)} .st-blocked .lamp{background:var(--accent)}
-  .st-idle{color:var(--faint)} .st-idle .lamp{background:var(--faint)}
-  .cell .last{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;
-              text-overflow:ellipsis;max-width:230px}
-  .cell .meta{color:var(--faint);font-size:11px;margin-top:2px}
-  .cell .cost{color:var(--ink)}
-  /* main split */
-  main{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px;margin-top:14px}
+  /* fleet graph (fleet-graph layer, ops palette) */
+  .diagram{margin-top:14px;background:radial-gradient(circle at 1px 1px,#161c24 1px,transparent 0) 0 0/26px 26px,var(--panel2);
+           border:1px solid var(--line);padding:6px}
+  .diagram svg{display:block;width:100%;height:auto}
+  .legend{display:flex;gap:22px;font-size:11px;color:var(--dim);padding:8px 6px 2px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:22px;border-top:2px solid var(--dim);
+            vertical-align:middle;margin-right:7px}
+  .legend i.dash{border-top-style:dashed}
+  .legend i.emit{border-color:var(--amber)}
+  /* trace ribbon */
+  .ribbon{background:var(--panel);border:1px solid var(--line);margin-top:12px;
+          padding:13px 18px 12px}
+  .ribbon h2{font-size:10px;letter-spacing:.26em;color:var(--dim);margin:0 0 6px;font-weight:600}
+  .ribbon h2 .sub{color:var(--faint);letter-spacing:.04em}
+  .track{position:relative;height:86px;margin:0 8px}
+  .track .axis{position:absolute;left:0;right:0;top:30px;height:2px;background:var(--line)}
+  .beat{position:absolute;top:0;transform:translateX(-50%);text-align:center;width:150px}
+  .beat .tm{font-size:10px;color:var(--faint);height:14px}
+  .beat .dot{width:13px;height:13px;border-radius:50%;margin:11px auto 0;
+             border:2px solid var(--faint);background:transparent}
+  .beat .lb{font-size:11px;font-weight:700;margin-top:9px;line-height:1.3;color:var(--faint);
+            letter-spacing:.06em}
+  .beat .ds{font-size:10.5px;color:var(--faint);line-height:1.3}
+  .beat.lit .dot{border-color:var(--bg)}
+  .beat.lit .lb{color:var(--ink)}
+  .beat.lit .ds{color:var(--dim)}
+  .beat.frontier .dot{animation:pulse 1.2s infinite}
+  /* dense data layer (ops console) */
+  main{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:12px;margin-top:12px}
   @media (max-width:900px){main{grid-template-columns:1fr}}
-  section{background:var(--panel2);border:1px solid var(--line);padding:10px 12px;min-width:0}
-  section h2{font-size:11px;letter-spacing:.22em;color:var(--dim);margin:0 0 8px;font-weight:600}
-  section h2 .sub{color:var(--faint);letter-spacing:.05em}
-  .branch{color:var(--accent);font-size:12px;margin:10px 0 4px;letter-spacing:.05em}
-  .branch:first-of-type{margin-top:2px}
-  .row{display:flex;gap:8px;padding:1px 4px;white-space:nowrap;overflow:hidden}
-  .row .seq{color:var(--faint);min-width:38px;text-align:right}
+  section{background:var(--panel2);border:1px solid var(--line);padding:11px 13px;min-width:0}
+  section + section{margin-top:12px}
+  main > section{margin-top:0}
+  h2{font-size:10px;letter-spacing:.26em;color:var(--dim);margin:0 0 9px;font-weight:600}
+  h2 .sub{color:var(--faint);letter-spacing:.04em}
+  .branch{color:var(--amber);font-size:12px;margin:11px 0 3px}
+  .branch:first-of-type{margin-top:0}
+  .row{display:flex;gap:8px;padding:1px 4px;white-space:nowrap;overflow:hidden;font-size:12px}
+  .row .seq{color:var(--faint);min-width:36px;text-align:right}
   .row .ts{color:var(--dim)}
-  .row .type{color:#9fb4c7;min-width:128px}
+  .row .type{color:var(--blue);min-width:128px}
   .row .sum{color:var(--ink);overflow:hidden;text-overflow:ellipsis}
-  .row.decision{background:#171307;box-shadow:inset 2px 0 0 var(--accent)}
-  .row.decision .type{color:var(--accent)}
+  .row.decision{background:#171307;box-shadow:inset 2px 0 0 var(--amber)}
+  .row.decision .type{color:var(--amber)}
   .row.brokenrow{background:#2a0f0e;box-shadow:inset 2px 0 0 var(--bad)}
   .row.new{animation:flash 1.6s}
   @keyframes flash{0%{background:#233018}100%{background:transparent}}
-  .stream .row .src{color:var(--accent);min-width:104px;overflow:hidden;text-overflow:ellipsis}
+  .stream .row .src{color:var(--amber);min-width:104px;overflow:hidden;text-overflow:ellipsis}
+  .dec-card{border:1px solid var(--line2);border-left:3px solid var(--amber);
+            background:var(--panel);padding:8px 11px;margin-bottom:8px}
+  .dec-card:last-child{margin-bottom:0}
+  .dec-card .h{display:flex;gap:8px;align-items:baseline}
+  .dec-card .pt{color:var(--amber);font-size:12px}
+  .dec-card .choice{margin-left:auto;font-weight:700;letter-spacing:.1em}
+  .dec-card .choice.bad{color:var(--bad)} .dec-card .choice.warn{color:var(--amber)}
+  .dec-card .choice.good{color:var(--ok)}
+  .dec-card .ev{color:var(--dim);font-size:11.5px;margin-top:3px;overflow:hidden;
+                text-overflow:ellipsis;white-space:nowrap}
+  .cost-row{display:flex;justify-content:space-between;color:var(--dim);font-size:11.5px;padding:1px 0}
+  .cost-row b{color:var(--ink);font-weight:600}
+  .bar{height:4px;background:var(--line);margin:2px 0 7px}
+  .bar i{display:block;height:100%;background:var(--amber)}
   .empty-note{color:var(--faint);padding:8px 4px}
-  footer{margin-top:16px;color:var(--faint);font-size:11px;letter-spacing:.06em;
+  footer{margin-top:14px;color:var(--faint);font-size:11px;letter-spacing:.05em;
          border-top:1px solid var(--line);padding-top:8px}
 </style>
 </head>
 <body>
 <header>
-  <div class="mark">AGENT<span class="sq">TRACE</span></div>
-  <div class="tag">LIVE AUDIT VIEW</div>
+  <div class="mark">AGENT<i>TRACE</i></div>
+  <div class="tag">FLEET GRAPH × OPS CONSOLE · LIVE AUDIT VIEW</div>
   <div class="spacer"></div>
   <span class="live" id="live"><span class="dot"></span><span id="livetxt">CONNECTING</span></span>
-  <span class="pill empty" id="chain">CHAIN —</span>
+  <span class="pill" id="chain">CHAIN —</span>
 </header>
 
 <div class="stats">
-  <div><span class="k">STORE</span><b id="store">—</b></div>
-  <div><span class="k">ACTIVE TRACE</span><b id="trace">—</b></div>
-  <div><span class="k">EVENTS</span><b id="count">0</b></div>
-  <div><span class="k">COST (LEDGER EVENTS)</span><b id="cost">—</b></div>
-  <div><span class="k">PENDING APPROVALS</span><b id="pendn">0</b></div>
-  <div><span class="k">UPDATED</span><b id="clock">—</b></div>
+  <div class="stat"><span class="k">ACTIVE TRACE</span><span class="v" id="trace">—</span></div>
+  <div class="stat"><span class="k">EVENTS</span><span class="v"><span id="count">0</span> <small id="producers"></small></span></div>
+  <div class="stat"><span class="k">DECISION RECORDS</span><span class="v"><span id="decn">0</span> <small>computed</small></span></div>
+  <div class="stat"><span class="k">RUN COST</span><span class="v"><span id="cost">—</span> <small id="costsub"></small></span></div>
+  <div class="stat"><span class="k">PENDING APPROVALS</span><span class="v" id="pendn">0</span></div>
+  <div class="stat"><span class="k">WINDOW</span><span class="v" id="window">—</span></div>
 </div>
 
 <div id="pending"><span class="h">PENDING APPROVAL — DISPLAY ONLY.</span>
@@ -104,22 +138,45 @@
   <div id="pendinglist"></div>
 </div>
 
-<div class="fleet" id="fleet"></div>
+<div class="diagram">
+  <svg id="graph" viewBox="0 0 1380 600" role="img"
+       aria-label="Fleet graph: six agents emitting into the AgentTrace store"></svg>
+  <div class="legend">
+    <span><i class="dash"></i>drill sequence (who ran when)</span>
+    <span><i class="emit"></i>events emitted into the store</span>
+    <span>node border = status · counts are this trace's events</span>
+  </div>
+</div>
+
+<div class="ribbon">
+  <h2>TRACE RIBBON <span class="sub" id="ribbonsub"></span></h2>
+  <div class="track"><div class="axis"></div><div id="beats"></div></div>
+</div>
 
 <main>
   <section>
     <h2>SPAN TREE / TIMELINE <span class="sub" id="treesub"></span></h2>
     <div id="tree"><div class="empty-note">No events yet — waiting for a run to write to the store.</div></div>
   </section>
-  <section class="stream">
-    <h2>EVENT STREAM <span class="sub">newest first · store order</span></h2>
-    <div id="stream"><div class="empty-note">—</div></div>
-  </section>
+  <div>
+    <section>
+      <h2>DECISION RECORDS <span class="sub">— computed, never narrated</span></h2>
+      <div id="decisions"><div class="empty-note">—</div></div>
+    </section>
+    <section class="stream">
+      <h2>EVENT STREAM <span class="sub">— newest first · store order</span></h2>
+      <div id="stream"><div class="empty-note">—</div></div>
+    </section>
+    <section>
+      <h2>COST BREAKDOWN <span class="sub">— agent-ledger, top billable steps</span></h2>
+      <div id="costbars"><div class="empty-note">—</div></div>
+    </section>
+  </div>
 </main>
 
-<footer>READ-ONLY VIEW — every element on this page is rendered from chained events in the
-  AgentTrace store, through the same query layer as the CLI. This page has no controls,
-  no accounts, and no state of its own, by design.</footer>
+<footer>READ-ONLY VIEW — every element on this page, the graph included, is rendered from
+  chained events in the AgentTrace store, through the same query layer as the CLI.
+  This page has no controls, no accounts, and no state of its own, by design.</footer>
 
 <script>
 "use strict";
@@ -129,22 +186,143 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
 const hhmmss = ts => { if(!ts) return "—"; const d = new Date(ts); return isNaN(d) ? ts : d.toLocaleTimeString("en-GB"); };
 let lastCount = -1, lastSeq = 0, lastChange = Date.now();
 
+/* ---- fleet graph (SVG, positions from the fleet-graph mockup) ---- */
+const LAYOUT = {
+  "agent-canary":        {x:60,   y:46,  w:262, h:104},
+  "agent-gate":          {x:400,  y:46,  w:240, h:104},
+  "blast-radius":        {x:762,  y:40,  w:330, h:116},
+  "factory-floor-agent": {x:60,   y:352, w:262, h:104},
+  "agent-ledger":        {x:880,  y:352, w:240, h:104},
+  "agent-chaos":         {x:1108, y:196, w:212, h:104},
+};
+const FALLBACK_POS = [ {x:60,y:46}, {x:400,y:46}, {x:762,y:40},
+                       {x:60,y:352}, {x:880,y:352}, {x:1108,y:196} ];
+const TONES = {
+  bad:  {stroke:"#e5534b", text:"#f0b6b2"},
+  warn: {stroke:"#e8a33d", text:"#e8c07a"},
+  ok:   {stroke:"#43b581", text:"#a9dcc4"},
+  run:  {stroke:"#43b581", text:"#a9dcc4"},
+  idle: {stroke:"#2a313d", text:"#77808d"},
+};
+const SEQ_PATHS = [
+  {d:"M322,98 L398,98", n:"1", nx:360, ny:102},
+  {d:"M640,98 L760,98", n:"2", nx:700, ny:102},
+  {d:"M770,128 C560,180 380,250 218,344", n:"3", nx:432, ny:222},
+  {d:"M322,404 L878,404", n:"4", nx:600, ny:408},
+  {d:"M1064,352 C1180,342 1216,332 1213,308", n:"5", nx:1186, ny:338},
+];
+const EMIT_PATHS = {
+  "agent-canary":        {d:"M210,150 C260,300 420,420 560,486",  lx:196,  ly:308},
+  "agent-gate":          {d:"M520,150 C540,300 600,420 640,486",  lx:512,  ly:352},
+  "blast-radius":        {d:"M930,156 C900,300 820,420 770,486",  lx:876,  ly:330},
+  "factory-floor-agent": {d:"M210,442 C300,470 420,486 540,494",  lx:330,  ly:478},
+  "agent-ledger":        {d:"M990,442 C920,470 840,486 770,494",  lx:880,  ly:478},
+  "agent-chaos":         {d:"M1240,250 C1240,380 1060,470 880,494", lx:1150, ly:420},
+};
+const trunc = (s, n) => s && s.length > n ? s.slice(0, n - 1) + "…" : (s || "");
+
+function renderGraph(st){
+  const nodes = st.nodes || [];
+  const bySource = {};
+  nodes.forEach(n => bySource[n.source] = n);
+  let s = '<defs>'
+    + '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#77808d"/></marker>'
+    + '<marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8a33d"/></marker>'
+    + '</defs>';
+  // drill sequence (dashed)
+  s += '<g stroke="#77808d" stroke-width="1.6" stroke-dasharray="6 5" fill="none" opacity=".7">'
+     + SEQ_PATHS.map(p => '<path d="' + p.d + '" marker-end="url(#arr)"/>').join("") + '</g>'
+     + '<g font-size="12" fill="#07090b">'
+     + SEQ_PATHS.map(p => '<circle cx="' + p.nx + '" cy="' + p.ny + '" r="10" fill="#77808d"/>'
+         + '<text x="' + p.nx + '" y="' + (p.ny + 4) + '" text-anchor="middle" font-weight="700">' + p.n + '</text>').join("") + '</g>';
+  // emit edges into the store (amber), labelled with per-trace counts
+  s += '<g stroke="#e8a33d" stroke-width="1.6" fill="none" opacity=".55">'
+     + Object.keys(EMIT_PATHS).map(k => '<path d="' + EMIT_PATHS[k].d + '" marker-end="url(#arrA)"/>').join("") + '</g>'
+     + '<g font-size="11.5" fill="#e8a33d">'
+     + Object.keys(EMIT_PATHS).map(k => {
+         const n = bySource[k];
+         return '<text x="' + EMIT_PATHS[k].lx + '" y="' + EMIT_PATHS[k].ly + '">'
+              + (n ? n.events + " ev" : "0 ev") + '</text>';
+       }).join("") + '</g>';
+  // nodes
+  nodes.forEach((n, i) => {
+    const L = LAYOUT[n.source] || Object.assign({w:262, h:104}, FALLBACK_POS[i % FALLBACK_POS.length]);
+    const tone = TONES[n.tone] || TONES.idle;
+    const maxChars = Math.floor((L.w - 40) / 6.7);
+    s += '<g>'
+      + '<rect x="' + L.x + '" y="' + L.y + '" width="' + L.w + '" height="' + L.h + '" rx="10" fill="#10141a" stroke="' + tone.stroke + '" stroke-width="1.6"/>'
+      + '<circle cx="' + (L.x + 28) + '" cy="' + (L.y + 30) + '" r="7" fill="' + tone.stroke + '">'
+      + (n.tone === "run" ? '<animate attributeName="opacity" values="1;.25;1" dur="1.2s" repeatCount="indefinite"/>' : '')
+      + '</circle>'
+      + '<text x="' + (L.x + 46) + '" y="' + (L.y + 35) + '" font-size="15" font-weight="700" fill="#eceff3">' + esc(n.source) + '</text>'
+      + '<text x="' + (L.x + 22) + '" y="' + (L.y + 60) + '" font-size="11.5" font-weight="700" letter-spacing="2" fill="' + tone.text + '">■ ' + esc(n.headline) + '</text>'
+      + '<text x="' + (L.x + 22) + '" y="' + (L.y + 82) + '" font-size="11" fill="#77808d">' + esc(trunc(n.detail, maxChars)) + '</text>'
+      + '</g>';
+  });
+  // store hub — reflects the chain verdict
+  const c = st.chain;
+  const hubStroke = c.status === "broken" ? "#e5534b" : "#e8a33d";
+  const hubText = c.status === "ok" ? "hash chain · " + st.events + " events · VERIFIED ✓ · tamper-evident"
+                : c.status === "broken" ? "hash chain · BROKEN @ SEQ " + c.broken_seq + " · " + esc(c.detail || "")
+                : "hash chain · " + st.events + " events · " + esc(c.status.toUpperCase());
+  const hubColor = c.status === "broken" ? "#e5534b" : "#43b581";
+  s += '<g>'
+    + '<rect x="470" y="492" width="440" height="82" rx="12" fill="#171307" stroke="' + hubStroke + '" stroke-width="2"/>'
+    + '<text x="690" y="524" text-anchor="middle" font-size="17" font-weight="800" letter-spacing="3" fill="#f4d9a8">AGENTTRACE STORE</text>'
+    + '<text x="690" y="548" text-anchor="middle" font-size="12" fill="' + hubColor + '">' + hubText + '</text>'
+    + '</g>';
+  $("graph").innerHTML = s;
+}
+
+/* ---- trace ribbon ---- */
+const BEAT_POS = [4, 16, 30, 44, 58, 71, 84, 96];
+const BEAT_COLORS = {block:"#e5534b", flagged:"#e8a33d", plan:"#7aa2c9", kill:"#e5534b",
+                     rollback:"#e08a3c", answered:"#43b581", costed:"#3fa7a0", matrix:"#9a7fd4"};
+function renderRibbon(st){
+  const beats = (st.beats && st.beats.beats) || [];
+  $("ribbonsub").textContent = st.active_trace
+    ? "— " + st.active_trace + (st.beats.complete ? " · complete" : " · in progress") : "";
+  $("beats").innerHTML = beats.map((b, i) =>
+    '<div class="beat' + (b.lit ? " lit" : "") + (b.frontier ? " frontier" : "") + '" style="left:' + BEAT_POS[i] + '%">'
+    + '<div class="tm">' + (b.ts ? hhmmss(b.ts) : "——") + '</div>'
+    + '<div class="dot" style="' + (b.lit ? "background:" + BEAT_COLORS[b.key] : "") + '"></div>'
+    + '<div class="lb">' + esc(b.label) + '</div>'
+    + '<div class="ds">' + esc(b.desc) + '</div></div>'
+  ).join("");
+}
+
+function choiceClass(choice){
+  const c = String(choice || "").toUpperCase();
+  if (c === "BLOCK" || c === "DENY" || c === "DENIED") return "bad";
+  if (c === "FLAGGED" || c.indexOf("APPROV") >= 0) return "warn";
+  return "good";
+}
+
 function render(st){
   // chain pill
   const c = st.chain, pill = $("chain");
-  if (c.status === "ok"){ pill.className = "pill ok"; pill.textContent = "CHAIN VERIFIED — " + c.count + " EVENTS"; }
+  if (c.status === "ok"){ pill.className = "pill ok"; pill.innerHTML = "CHAIN <b>VERIFIED</b> — " + c.count + " EVENTS"; }
   else if (c.status === "broken"){ pill.className = "pill broken"; pill.textContent = "CHAIN BROKEN @ SEQ " + c.broken_seq; }
-  else if (c.status === "empty"){ pill.className = "pill empty"; pill.textContent = "CHAIN — EMPTY STORE"; }
-  else { pill.className = "pill error"; pill.textContent = "CHAIN " + c.status.toUpperCase(); }
+  else if (c.status === "empty"){ pill.className = "pill"; pill.textContent = "CHAIN — EMPTY STORE"; }
+  else { pill.className = "pill"; pill.textContent = "CHAIN " + c.status.toUpperCase(); }
 
-  $("store").textContent = st.store;
+  // stat strip
   $("trace").textContent = st.active_trace || "—";
   $("count").textContent = st.events;
-  $("cost").textContent = st.cost.spans
-    ? "$" + st.cost.total_usd.toFixed(5) + " · " + st.cost.spans + " spans · " + st.cost.billable_steps + " steps"
-    : "—";
+  const prod = (st.nodes || []).filter(n => n.events > 0).length;
+  $("producers").textContent = prod ? "/ " + prod + " producers" : "";
+  $("decn").textContent = (st.decisions || []).length;
+  $("cost").textContent = st.cost.spans ? "$" + st.cost.total_usd.toFixed(5) : "—";
+  $("costsub").textContent = st.cost.spans ? st.cost.spans + " spans · " + st.cost.billable_steps + " steps" : "";
   $("pendn").textContent = st.pending_approvals.length;
-  $("clock").textContent = new Date().toLocaleTimeString("en-GB");
+  // window: first → last event time of the active trace, from the tree
+  let tss = [];
+  (st.tree || []).forEach(b => b.events.forEach(e => tss.push(e.ts)));
+  if (tss.length){
+    const first = tss.reduce((a, b) => a < b ? a : b), last = tss.reduce((a, b) => a > b ? a : b);
+    const dur = Math.max(0, Math.round((new Date(last) - new Date(first)) / 1000));
+    $("window").innerHTML = hhmmss(first) + " → " + hhmmss(last) + " <small>" + dur + "s</small>";
+  } else $("window").textContent = "—";
 
   // pending approvals (display only)
   const pb = $("pending");
@@ -155,19 +333,13 @@ function render(st){
       (p.detail ? " — " + esc(p.detail) : "") + " · since " + hhmmss(p.ts) + "</div>").join("");
   } else pb.style.display = "none";
 
-  // fleet strip
-  $("fleet").innerHTML = st.fleet.map(f =>
-    '<div class="cell"><div class="name">' + esc(f.source) + '</div>' +
-    '<div class="st st-' + f.status + '"><span class="lamp"></span>' + f.status.toUpperCase() + '</div>' +
-    '<div class="last">' + (f.last_type ? esc(f.last_type) + (f.last_summary ? " — " + esc(f.last_summary) : "") : "no events yet") + '</div>' +
-    '<div class="meta">' + f.events + ' events · last ' + hhmmss(f.last_ts) +
-    (f.cost_usd ? ' · <span class="cost">$' + f.cost_usd.toFixed(5) + '</span>' : '') + '</div></div>'
-  ).join("");
+  renderGraph(st);
+  renderRibbon(st);
 
   // span tree / timeline
   const brokenSeq = (c.status === "broken") ? c.broken_seq : null;
   if (st.tree.length){
-    $("treesub").textContent = "— " + (st.active_trace || "");
+    $("treesub").textContent = "— " + (st.active_trace || "") + " · store order";
     $("tree").innerHTML = st.tree.map(b =>
       '<div class="branch">▸ ' + esc(b.source) + ' (' + b.events.length + (b.truncated ? "+, truncated" : "") + ')</div>' +
       b.events.map(e =>
@@ -183,6 +355,15 @@ function render(st){
     $("tree").innerHTML = '<div class="empty-note">No events yet — waiting for a run to write to the store.</div>';
   }
 
+  // decision records
+  if ((st.decisions || []).length){
+    $("decisions").innerHTML = st.decisions.map(d =>
+      '<div class="dec-card"><div class="h"><span class="pt">#' + d.seq + ' · ' + esc(d.decision_point) + '</span>'
+      + '<span class="choice ' + choiceClass(d.choice) + '">' + esc(String(d.choice).toUpperCase()) + '</span></div>'
+      + '<div class="ev">' + esc(d.summary) + '</div></div>'
+    ).join("");
+  } else $("decisions").innerHTML = '<div class="empty-note">—</div>';
+
   // event stream
   if (st.stream.length){
     $("stream").innerHTML = st.stream.map(e =>
@@ -192,6 +373,15 @@ function render(st){
       (e.summary ? " — " + esc(e.summary) : "") + '</span></div>'
     ).join("");
   } else $("stream").innerHTML = '<div class="empty-note">—</div>';
+
+  // cost bars
+  if ((st.cost_steps || []).length){
+    const max = Math.max.apply(null, st.cost_steps.map(r => r.cost_usd)) || 1;
+    $("costbars").innerHTML = st.cost_steps.map(r =>
+      '<div class="cost-row"><span>' + esc(r.label) + '</span><b>$' + r.cost_usd.toFixed(5) + '</b></div>'
+      + '<div class="bar"><i style="width:' + Math.max(2, Math.round(r.cost_usd / max * 100)) + '%"></i></div>'
+    ).join("");
+  } else $("costbars").innerHTML = '<div class="empty-note">—</div>';
 
   // liveness: honest — "live" only while new events are actually landing
   if (st.events !== lastCount){

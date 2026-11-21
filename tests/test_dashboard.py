@@ -136,6 +136,101 @@ def test_live_tailing_via_events_endpoint(tmp_path):
         server.shutdown()
 
 
+def _ev(seq, source, type_, payload=None, kind="event"):
+    return {"seq": seq, "ts": "2026-11-21T19:25:00Z", "trace_id": "t-1",
+            "agent": source, "source": source, "type": type_,
+            "kind": kind, "payload": payload or {}}
+
+
+def test_page_is_hybrid_graph_plus_ops(tmp_path):
+    server, port = _serve(_full_store(tmp_path))
+    try:
+        status, body = _request(port, "GET", "/")
+        assert status == 200
+        # Fleet-graph layer: SVG graph, store hub, beat ribbon.
+        for marker in (b"FLEET GRAPH", b"TRACE RIBBON", b"AGENTTRACE STORE",
+                       b'id="graph"', b'id="beats"'):
+            assert marker in body, f"hybrid page missing {marker!r}"
+        # Ops-console layer: span tree, decision cards, stream, cost bars.
+        for marker in (b"SPAN TREE", b"DECISION RECORDS", b"EVENT STREAM",
+                       b"COST BREAKDOWN"):
+            assert marker in body, f"hybrid page missing {marker!r}"
+    finally:
+        server.shutdown()
+
+
+def test_state_carries_graph_view_models(tmp_path):
+    state = build_state(_full_store(tmp_path))
+    nodes = {n["source"]: n for n in state["nodes"]}
+    assert set(nodes) >= {"agent-canary", "agent-gate", "blast-radius",
+                          "factory-floor-agent", "agent-ledger", "agent-chaos"}
+    # The samples store is the spike trace: canary BLOCKed, gate flagged,
+    # ledger costed -- the graph must say so, from the store alone.
+    assert nodes["agent-canary"]["headline"] == "BLOCK"
+    assert nodes["agent-canary"]["tone"] == "bad"
+    assert nodes["agent-canary"]["events"] == 2
+    assert nodes["agent-gate"]["headline"] == "FLAGGED"
+    assert "$" in nodes["agent-ledger"]["detail"]
+    assert nodes["factory-floor-agent"]["events"] == 0
+    # Decision cards: canary's BLOCK + gate's two computed records.
+    choices = {(d["decision_point"], d["choice"]) for d in state["decisions"]}
+    assert ("agent-canary.compare", "BLOCK") in choices
+    assert len(state["decisions"]) == 3
+    # Cost bars reconcile with the cost summary (row rounding aside).
+    bars_total = sum(r["cost_usd"] for r in state["cost_steps"])
+    assert abs(bars_total - state["cost"]["total_usd"]) < 0.001
+    assert all(" / " in r["label"] or r["label"].startswith("+")
+               for r in state["cost_steps"])
+
+
+def test_beats_on_samples_store(tmp_path):
+    from agenttrace import query as q
+    from dashboard.server import load_store_events
+    events = load_store_events(_full_store(tmp_path))
+    prog = q.drill_progress(events, "trace-spike-efadd3b5")
+    lit = {b["key"]: b["lit"] for b in prog["beats"]}
+    # Samples: verdict, screening, plan and ledger spans exist; the
+    # sample blast-radius run has no kill seam and completes cleanly,
+    # and there is no factory-floor or chaos producer in the store.
+    assert lit == {"block": True, "flagged": True, "plan": True,
+                   "kill": False, "rollback": False, "answered": False,
+                   "costed": True, "matrix": False}
+    assert prog["complete"] is False
+    frontier = [b["key"] for b in prog["beats"] if b["frontier"]]
+    assert frontier == ["costed"]
+
+
+def test_beats_kill_seam_and_full_completion():
+    from agenttrace import query as q
+    br_detail = "step s3/6: Health gate for checkout-api-2"
+    events = [
+        _ev(1, "agent-canary", "compare_verdict",
+            {"base_version": "v1", "candidate_version": "v2-bad",
+             "decision": "BLOCK", "reasons": ["r"]}),
+        _ev(2, "agent-gate", "screening_findings",
+            {"findings": [{"pattern": "ssn"}]}),
+        _ev(3, "blast-radius", "plan_created", {"detail": "6 step(s)"}),
+        _ev(4, "blast-radius", "step_started",
+            {"action": "health_check", "resource": "i-1", "detail": br_detail}),
+        _ev(5, "blast-radius", "step_started",
+            {"action": "health_check", "resource": "i-1", "detail": br_detail}),
+        _ev(6, "blast-radius", "rollback_step", {"detail": "inverse"}),
+        _ev(7, "blast-radius", "run_finished", {"result": "rolled_back"}),
+        _ev(8, "factory-floor-agent", "outcome", {"outcome": "answered"}),
+        _ev(9, "agent-ledger", "span", {"name": "run", "attributes": {}}),
+        _ev(10, "agent-chaos", "chaos_report",
+            {"headline": {"silent_failure_rate_defenses_off": 1.0,
+                          "silent_failure_rate_defenses_on": 0.0}, "rows": 12}),
+    ]
+    prog = q.drill_progress(events, "t-1")
+    assert all(b["lit"] for b in prog["beats"]) and prog["complete"] is True
+    kill = next(b for b in prog["beats"] if b["key"] == "kill")
+    assert kill["seq"] == 5  # the replayed step_started is the seam
+    nodes = {n["source"]: n for n in q.graph_nodes(events, "t-1", now=0.0)}
+    assert nodes["blast-radius"]["headline"] == "ROLLED BACK"
+    assert "kill -9" in nodes["blast-radius"]["detail"]
+
+
 def test_server_reads_store_only():
     """The server's data path is the store + the query layer, only.
 

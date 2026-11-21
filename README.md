@@ -85,7 +85,7 @@ The rendered timeline (from the store alone — the renderer never opens a produ
 
 ## The live dashboard (phase 2)
 
-One page that renders the store while a run is actually executing — fleet status per agent (idle / running / blocked on a pending approval), the live span tree of the active trace, the event stream, the chain-verification status, and the cost column from the ledger events in the store. The screenshot below was captured mid-drill, during blast-radius's remediation beat (note the canary BLOCK decision record and the gate's flagged screening already in the tree):
+One page that renders the store while a run is actually executing, in two layers. On top, a **fleet graph**: the six producers as status-coloured nodes on a dotted canvas, dashed arrows for the drill sequence, amber curves for the events each producer has emitted into the central AgentTrace Store hub (which carries the live chain verdict), and a **trace ribbon** whose eight beats — BLOCK → FLAGGED → PLAN → KILL -9 → ROLLBACK → ANSWERED → COSTED → MATRIX DONE — light in order as the run progresses. Below, the **ops console**: a stat strip (active trace, events, decision records, run cost, pending approvals, window), the live span tree of the active trace, decision-record cards, the event stream, and the ledger cost breakdown. Every element of both layers — node headlines, hub counts, ribbon beats included — is derived from the store through the query layer; the graph is a view of the record, not a picture drawn next to it. The screenshot below was captured mid-drill at 55 events: five ribbon beats lit, blast-radius already rolled back, factory-floor / ledger / chaos still to run, chain verified:
 
 ![AgentTrace live dashboard, mid-drill](dashboard/dashboard-live.png)
 
@@ -101,7 +101,7 @@ The dashboard exists under five hard design constraints, adopted from the portfo
 
 1. **Read-only, absolutely.** No approve / pause / kill / config actions anywhere in the UI or the server; every non-GET request is rejected with 405. Pending approvals are *displayed*, never resolved — approvals happen at the producer, where they happen today.
 2. **Store-only data.** Everything rendered comes from the AgentTrace store through the same query layer the CLI uses (`agenttrace/query.py`) plus the store's own verifier. No side channels, no direct producer connections, no state of its own.
-3. **No platform features.** No accounts, no alerting, no historical analytics, no settings. One page: fleet status, live span tree / timeline, event stream, chain status, cost column.
+3. **No platform features.** No accounts, no alerting, no historical analytics, no settings. One page: fleet graph + trace ribbon, live span tree / timeline, decision records, event stream, chain status, cost breakdown.
 4. **Capped shape.** A single static page served by a tiny stdlib-only Python server (no new dependencies), live-updating by polling a read-only JSON endpoint. A feature that can't fit this shape is cut, not the conditions.
 5. **Honest liveness.** The demo path runs the actual drill as a subprocess and ingests each producer artifact as it is emitted, so what renders is a run actually executing — including the kill -9 gap and the resume. The feed is never simulated or pre-scripted; when nothing is running, the page says so.
 
@@ -111,7 +111,7 @@ What it deliberately does not do: act on anything, chart history, or keep any st
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 38 tests
+.venv/bin/python -m pytest        # 42 tests
 
 # store operations over the bundled producer samples:
 .venv/bin/python -m agenttrace.cli ingest --store /tmp/demo.jsonl \
@@ -148,6 +148,8 @@ agenttrace/
                 ledger OTLP, factory-floor, chaos)
   decisions.py  decision-record extractors (computed decision points only)
   query.py      query layer (by trace ID / agent / source / type / kind)
+                + the dashboard view-models (graph nodes, drill beats,
+                decision cards, cost breakdown)
   render.py     one-page tree/timeline from the store alone
   cli.py        ingest / verify / query / render
 dashboard/      the read-only live view (server.py: stdlib-only server;
