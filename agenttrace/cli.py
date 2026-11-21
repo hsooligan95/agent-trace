@@ -22,6 +22,8 @@ INGESTORS = {
     "gate": ("agent-gate audit JSONL", ingest_mod.ingest_gate_audit),
     "blastradius": ("blast-radius audit JSONL", ingest_mod.ingest_blastradius_audit),
     "ledger": ("agent-ledger OTLP JSON", ingest_mod.ingest_ledger_otlp),
+    "factoryfloor": ("factory-floor-agent trace JSONL", ingest_mod.ingest_factory_floor_trace),
+    "chaos": ("agent-chaos report JSON", ingest_mod.ingest_chaos_report),
 }
 
 
@@ -86,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--gate", help="agent-gate audit JSONL")
     p.add_argument("--blastradius", help="blast-radius audit JSONL")
     p.add_argument("--ledger", help="agent-ledger OTLP JSON export")
+    p.add_argument("--factoryfloor", help="factory-floor-agent trace JSONL")
+    p.add_argument("--chaos", help="agent-chaos report JSON")
     p.set_defaults(func=cmd_ingest)
 
     p = sub.add_parser("verify", help="verify a store's hash chain")

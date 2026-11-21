@@ -4,7 +4,10 @@ One ingestor per producer, each reading only that producer's existing
 machine-readable output. Producers emit their own trace identity
 (agent-canary's verdict carries run_id + generated_at; agent-gate's
 audit entries carry traceId; blast-radius's audit records carry
-run_id) -- ingestors preserve the producer-emitted identity and never
+run_id; factory-floor's run record carries the trace ID it was
+supplied; agent-chaos's report carries run_id + generated_at;
+agent-ledger's root span may declare an external trace ID) --
+ingestors preserve the producer-emitted identity and never
 re-key or infer correlation that the producer did not emit.
 
 Every produced event is validated against the versioned schema before
@@ -104,28 +107,104 @@ def _nano_to_iso(nano: str) -> str:
 def ingest_ledger_otlp(path: str | Path) -> list[dict]:
     """agent-ledger OTLP JSON export -> one event per span.
 
-    Ledger spans carry their own OTLP trace IDs, which are preserved as
-    the events' trace_id. (Joining a ledger run to another producer's
-    trace is phase 2: the spans' identity is OTLP-native, and this
-    ingestor does not invent a mapping.)
+    Ledger spans carry their own OTLP trace IDs. If the run was stamped
+    with an external trace ID (the sample agent's --trace-id /
+    AGENTTRACE_TRACE_ID plumbing puts ``agenttrace.trace_id`` on the
+    run's root span), every span of that OTLP trace joins the external
+    trace: the mapping is declared by the producer on its own root
+    span, never inferred by this ingestor, and the native OTLP trace ID
+    is preserved in each event's payload as ``otlp_trace_id``.
+    Unstamped exports keep their OTLP trace IDs, exactly as before.
     """
     doc = _read_json(path)
-    events = []
+    spans = []
     for resource_span in doc.get("resourceSpans", []):
         for scope_span in resource_span.get("scopeSpans", []):
             for span in scope_span.get("spans", []):
-                attrs = _otlp_attrs(span)
-                events.append(new_event(
-                    trace_id=span["traceId"],
-                    ts=_nano_to_iso(span["startTimeUnixNano"]),
-                    source="agent-ledger",
-                    agent=attrs.get("agentledger.agent", "agent-ledger"),
-                    type="span",
-                    payload={
-                        "name": span.get("name"),
-                        "span_id": span.get("spanId"),
-                        "parent_span_id": span.get("parentSpanId"),
-                        "attributes": attrs,
-                    },
-                ))
+                spans.append((span, _otlp_attrs(span)))
+    join: dict[str, str] = {}
+    for span, attrs in spans:
+        external = attrs.get("agenttrace.trace_id")
+        if external:
+            join[span["traceId"]] = external
+    events = []
+    for span, attrs in spans:
+        otlp_trace_id = span["traceId"]
+        payload = {
+            "name": span.get("name"),
+            "span_id": span.get("spanId"),
+            "parent_span_id": span.get("parentSpanId"),
+            "otlp_trace_id": otlp_trace_id,
+            "attributes": attrs,
+        }
+        if otlp_trace_id in join:
+            payload["agenttrace_trace_id"] = join[otlp_trace_id]
+        events.append(new_event(
+            trace_id=join.get(otlp_trace_id, otlp_trace_id),
+            ts=_nano_to_iso(span["startTimeUnixNano"]),
+            source="agent-ledger",
+            agent=attrs.get("agentledger.agent", "agent-ledger"),
+            type="span",
+            payload=payload,
+        ))
+    return _finish(events)
+
+
+def ingest_factory_floor_trace(path: str | Path) -> list[dict]:
+    """factory-floor-agent JSONL run record -> one event per record line.
+
+    The agent emits only when a trace ID was supplied to it
+    (FACTORY_FLOOR_TRACE_ID / AGENTTRACE_TRACE_ID); the record carries
+    that propagated ID, which this ingestor preserves verbatim. The
+    groundedness line is the agent's computed decision point, so it
+    additionally yields a decision record reshaped from the checker's
+    own emitted scores (see decisions.factory_floor_decision_events).
+    """
+    events: list[dict] = []
+    for record in _read_jsonl(path):
+        trace_id = record["trace_id"]
+        events.append(new_event(
+            trace_id=trace_id,
+            ts=record["ts"],
+            source="factory-floor-agent",
+            agent=record.get("agent", "factory-floor-agent"),
+            type=record["type"],
+            payload=record["payload"],
+        ))
+        if record["type"] == "groundedness":
+            events += decisions.factory_floor_decision_events(
+                record["payload"], trace_id=trace_id, ts=record["ts"])
+    return _finish(events)
+
+
+def ingest_chaos_report(path: str | Path) -> list[dict]:
+    """agent-chaos report JSON -> headline event + one event per row.
+
+    Chaos reports carry their own run_id + generated_at (emit-side
+    additions in agent-chaos, same pattern as canary's verdict); both
+    are required — a report without them cannot be keyed to a trace
+    honestly, so ingestion fails loudly on the missing key. Rows carry
+    no per-row timestamps, so every event is stamped with the report's
+    generated_at rather than an invented time.
+    """
+    report = _read_json(path)
+    trace_id = report["run_id"]
+    ts = report["generated_at"]
+    events = [new_event(
+        trace_id=trace_id,
+        ts=ts,
+        source="agent-chaos",
+        agent="agent-chaos",
+        type="chaos_report",
+        payload={"headline": report["headline"], "rows": len(report["rows"])},
+    )]
+    for row in report["rows"]:
+        events.append(new_event(
+            trace_id=trace_id,
+            ts=ts,
+            source="agent-chaos",
+            agent="agent-chaos",
+            type="scenario_result",
+            payload=row,
+        ))
     return _finish(events)

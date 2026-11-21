@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """AgentTrace flagship drill — one trace ID, two workloads, one platform.
 
-WHAT THIS RUNS (honestly framed): two different workloads governed by
-one platform. A QA agent's promotion pipeline (agent-canary gates its
-v2; agent-gate screens the tool results it would consume) and a
-remediation agent's execution (blast-radius plans, is approved, is
-killed mid-run, resumes, fails verification, and rolls back). They are
-not one agent and this script does not pretend otherwise -- what is
-shared is the platform around them: one trace ID, one policy/audit
-spine, one tamper-evident store (AgentTrace) that records both.
+WHAT THIS RUNS (honestly framed): several distinct workloads governed
+by one platform -- a promotion gate (agent-canary), a screening
+gateway (agent-gate), a remediation agent (blast-radius), a grounded
+QA agent answering a question (factory-floor-agent), a
+cost-instrumented ops agent (agent-ledger's sample agent), and a
+failure-injection matrix (agent-chaos). They are not one agent and
+this script does not pretend otherwise -- what is shared is the
+platform around them: one trace ID, propagated by each producer at
+runtime, and one tamper-evident store (AgentTrace) that records all
+of them.
 
 Beats:
   1. agent-canary compare v1 vs v2-bad under the trace ID -> BLOCK.
@@ -20,7 +22,16 @@ Beats:
      process resumes -> verification fails on node-3's persistent
      fault -> full rollback -> final cloud state proven identical to
      the initial snapshot.
-  4. Every producer artifact is ingested into one AgentTrace store;
+  4. factory-floor-agent answers a question under the same ID; its
+     emit-side run record (plan, retrieval, groundedness scores,
+     outcome) lands in the same store, groundedness decision record
+     included.
+  5. agent-ledger's sample agent runs its baseline suite stamped with
+     the same ID (root-span `agenttrace.trace_id`); its spans join
+     this trace, so the drill's cost line is real ledger accounting.
+  6. agent-chaos runs its scenario matrix under the same ID; its
+     report is ingested (headline + every scenario row).
+  7. Every producer artifact is ingested into one AgentTrace store;
      the chain verifies; a one-byte tamper is detected at the exact
      event; the one-page timeline renders from the store alone.
 
@@ -52,6 +63,9 @@ TRACE_ID = f"trace-drill-{uuid.uuid4().hex[:8]}"
 OUT = REPO / "drill" / "output" / TRACE_ID
 VENV_PY = REPO / ".venv" / "bin" / "python"
 CANARY_PY = PORTFOLIO / "agent-canary" / ".venv" / "bin" / "python"
+FF_PY = PORTFOLIO / "factory-floor-agent" / ".venv" / "bin" / "python"
+LEDGER_PY = PORTFOLIO / "agent-ledger" / ".venv" / "bin" / "python"
+CHAOS_PY = PORTFOLIO / "agent-chaos" / ".venv" / "bin" / "python"
 BR_ROOT = PORTFOLIO / "blast-radius"
 MOTO_PORT = 5521
 MOTO_URL = f"http://127.0.0.1:{MOTO_PORT}"
@@ -92,8 +106,9 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     say(f"=== AgentTrace flagship drill ===")
     say(f"trace ID: {TRACE_ID}")
-    say("framing: two workloads (a QA agent's promotion pipeline, a remediation")
-    say("agent's execution), governed by one platform, recorded in one store.\n")
+    say("framing: several distinct workloads (promotion gate, screening gateway,")
+    say("remediation agent, grounded QA agent, cost-instrumented ops agent, chaos")
+    say("matrix), governed by one platform, recorded in one store.\n")
 
     # --- Beat 1: canary BLOCK ------------------------------------------------
     say("--- beat 1: agent-canary compare v1 vs v2-bad (expect BLOCK, exit 2)")
@@ -210,14 +225,75 @@ def main() -> int:
     assert {"plan_created", "approval_granted", "rollback_step", "run_finished"} <= kinds
     say(f"blast-radius: {len(br_events)} audit records, all run_id={TRACE_ID}")
 
-    # --- Beat 4: ingest into one AgentTrace store -----------------------------
-    say("\n--- beat 4: ingest all producers into one AgentTrace store")
+    # --- Beat 4: factory-floor answers under the same trace ID ----------------
+    say("\n--- beat 4: factory-floor-agent answers a question (expect grounded)")
+    ff_record = OUT / "factory-floor-trace.jsonl"
+    ff = run([str(FF_PY), "run_agent.py",
+              "What is a state graph in LangGraph and how does state flow through it?"],
+             env={"FACTORY_FLOOR_TRACE_ID": TRACE_ID,
+                  "FACTORY_FLOOR_TRACE_OUT": str(ff_record),
+                  "PYTHONDONTWRITEBYTECODE": "1"},
+             cwd=PORTFOLIO / "factory-floor-agent", expect=0)
+    assert "Result: grounded" in ff.stdout, ff.stdout[-1000:]
+    ff_events = [json.loads(l) for l in
+                 ff_record.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert ff_events and all(e["trace_id"] == TRACE_ID for e in ff_events)
+    groundedness = next(e for e in ff_events if e["type"] == "groundedness")
+    claims = groundedness["payload"]["claims"]
+    say(f"factory-floor: {len(ff_events)} record events under traceId={TRACE_ID}")
+    say(f"factory-floor: groundedness grounded={groundedness['payload']['grounded']} "
+        f"claims={len(claims)} min_overlap={min(c['overlap'] for c in claims)} "
+        f"threshold={groundedness['payload']['threshold']}")
+
+    # --- Beat 5: ledger sample agent, stamped with the same trace ID ----------
+    say("\n--- beat 5: agent-ledger sample agent baseline (expect spans joined by stamp)")
+    run([str(LEDGER_PY), "-m", "sample_agent.run", "baseline",
+         "--trace-id", TRACE_ID],
+        env={"PYTHONDONTWRITEBYTECODE": "1"},
+        cwd=PORTFOLIO / "agent-ledger", expect=0)
+    # The sample agent writes its OTLP export into its own runs/ dir
+    # (a regenerable artifact); the drill copies it out for ingestion.
+    ledger_export = OUT / "ledger-otlp.json"
+    ledger_export.write_text(
+        (PORTFOLIO / "agent-ledger" / "runs" / "baseline-otlp.json")
+        .read_text(encoding="utf-8"), encoding="utf-8")
+    ledger_doc = json.loads(ledger_export.read_text(encoding="utf-8"))
+    ledger_spans = [s for rs in ledger_doc["resourceSpans"]
+                    for ss in rs["scopeSpans"] for s in ss["spans"]]
+    stamped = [s for s in ledger_spans
+               if any(a["key"] == "agenttrace.trace_id"
+                      and a["value"].get("stringValue") == TRACE_ID
+                      for a in s["attributes"])]
+    assert len(stamped) == 1, f"expected exactly 1 stamped root span, saw {len(stamped)}"
+    say(f"ledger: {len(ledger_spans)} spans exported; root span stamped "
+        f"agenttrace.trace_id={TRACE_ID}")
+
+    # --- Beat 6: chaos matrix under the same trace ID --------------------------
+    say("\n--- beat 6: agent-chaos scenario matrix (expect silent failures 100% -> 0%)")
+    run([str(CHAOS_PY), "-m", "agentchaos", "run",
+         "--out", str(OUT / "chaos"), "--run-id", TRACE_ID],
+        env={"PYTHONDONTWRITEBYTECODE": "1"},
+        cwd=PORTFOLIO / "agent-chaos", expect=0)
+    chaos_report = json.loads((OUT / "chaos" / "report.json").read_text(encoding="utf-8"))
+    assert chaos_report["run_id"] == TRACE_ID
+    headline = chaos_report["headline"]
+    say(f"chaos: {len(chaos_report['rows'])} scenario rows under run_id={TRACE_ID}; "
+        f"silent-failure rate off={headline['silent_failure_rate_defenses_off']:.0%} "
+        f"on={headline['silent_failure_rate_defenses_on']:.0%}")
+
+    # --- Beat 7: ingest into one AgentTrace store -----------------------------
+    say("\n--- beat 7: ingest all producers into one AgentTrace store")
     store_path = OUT / "store.jsonl"
     events = []
     events += ingest.ingest_canary_verdict(verdict_path)
     events += ingest.ingest_gate_audit(gate_state / "audit.jsonl")
     events += ingest.ingest_blastradius_audit(OUT / "br-runs" / TRACE_ID / "audit.jsonl")
+    events += ingest.ingest_factory_floor_trace(ff_record)
+    events += ingest.ingest_ledger_otlp(ledger_export)
+    events += ingest.ingest_chaos_report(OUT / "chaos" / "report.json")
     assert all(e["trace_id"] == TRACE_ID for e in events)
+    sources = sorted({e["source"] for e in events})
+    say(f"store sources: {', '.join(sources)}")
     store.append_events(store_path, events)
     result = store.verify(store_path)
     assert result.ok
@@ -239,22 +315,28 @@ def main() -> int:
     assert not bad.ok and bad.broken_seq == idx + 1
     say(f"tamper: flipped 1 byte in seq {idx + 1}; verify fails at exactly seq {bad.broken_seq}")
 
-    # Ledger-style cost line, computed from the canary verdict events in
-    # this store. (agent-ledger OTLP ingestion is implemented and
-    # contract-tested, but ledger spans carry OTLP-native trace IDs;
-    # joining a ledger run to this drill trace is phase 2 -- not faked.)
-    base_cost = verdict["base_aggregate"]["total_cost_usd"]
-    cand_cost = verdict["cand_aggregate"]["total_cost_usd"]
-    say(f"cost line (from canary verdict events in this store): "
-        f"base run ${base_cost:.5f} · candidate run ${cand_cost:.5f} · "
-        f"delta {verdict['cost_delta_pct']:+.2f}% -- cheaper, and BLOCKED anyway: "
-        "the gate is a behavior gate, not a cost gate.")
+    # Cost line: REAL agent-ledger accounting, from the ledger span
+    # events in this store — the sample ops agent's baseline run,
+    # joined to this trace by the ID its root span declared. (Phase 1's
+    # drill had to borrow canary's verdict costs and label them as
+    # such; the ledger join is the phase-2 fix, and this line is it.)
+    ledger_events = [e for e in events if e["source"] == "agent-ledger"]
+    step_events = [e for e in ledger_events
+                   if e["payload"]["attributes"].get("agentledger.kind") == "step"]
+    total_cost = sum(float(e["payload"]["attributes"].get("agentledger.cost_usd", 0.0))
+                     for e in step_events)
+    say(f"cost line (from agent-ledger spans in this store, joined by the "
+        f"propagated trace ID): {len(ledger_events)} spans · {len(step_events)} "
+        f"billable steps · total ${total_cost:.5f} — the sample ops agent's "
+        f"baseline run under this trace.")
 
     page = render_timeline(store.load_events(store_path), verify_result=result)
     (OUT / "timeline.md").write_text(page, encoding="utf-8")
     say(f"\ntimeline rendered from the store alone -> {OUT / 'timeline.md'}")
     say("\nDRILL COMPLETE — canary BLOCK, gate screening, approval, kill -9, resume,")
-    say("verify-fail, rollback to identical state, one chained store, tamper caught.")
+    say("verify-fail, rollback to identical state, factory-floor grounded answer,")
+    say("ledger spans joined by propagated ID, chaos matrix ingested, one chained")
+    say("store, tamper caught at the exact event.")
     return 0
 
 

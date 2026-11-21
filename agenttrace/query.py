@@ -48,4 +48,27 @@ def summarize_event(event: dict) -> str:
     if source == "agent-ledger":
         cost = p.get("attributes", {}).get("agentledger.cost_usd")
         return f"span {p.get('name')}" + (f" cost=${cost}" if cost is not None else "")
+    if source == "factory-floor-agent":
+        if etype == "run_start":
+            return f"question: {p.get('question')}"
+        if etype == "plan":
+            return f"plan: {p.get('plan')}"
+        if etype == "retrieval":
+            return f"{len(p.get('hits', []))} passages (attempts={p.get('attempts')})"
+        if etype == "groundedness":
+            return (f"grounded={p.get('grounded')} threshold={p.get('threshold')} "
+                    f"claims={len(p.get('claims', []))}")
+        if etype in ("outcome", "run_end"):
+            return f"outcome={p.get('outcome')}"
+        return ""
+    if source == "agent-chaos":
+        if etype == "chaos_report":
+            h = p.get("headline", {})
+            return (f"silent-failure off={h.get('silent_failure_rate_defenses_off')} "
+                    f"on={h.get('silent_failure_rate_defenses_on')} "
+                    f"({p.get('rows')} rows)")
+        if etype == "scenario_result":
+            return (f"{p.get('scenario')} mode={p.get('mode')} "
+                    f"outcome={p.get('outcome')} detected={p.get('detected')}")
+        return ""
     return ""
