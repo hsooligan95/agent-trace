@@ -13,7 +13,7 @@ It exists because of a measured defect: the portfolio's platform Critic found th
 | agent-ledger | What did it cost? |
 | agent-gate | What is allowed, enforced at one gateway? |
 | **AgentTrace** | **What happened, who decided it, and can you prove the record wasn't altered?** |
-| TraceReplay (concept) | A debugging workflow that will read this store |
+| TraceReplay (built, below) | The debugging workflow that reads this store: replay a trace, diff two runs |
 
 LangSmith / Langfuse / Arize trace for *debugging*; none offers a hash-chained, tamper-evident record with decision records built to hand to an assessor, cross-framework and cross-language by construction, as a runnable component rather than a hosted platform. The claim is deliberately narrow — the audit axis only. This is not an observability platform; its one visual surface is a read-only live view over the store, built under hard conditions (see "The live dashboard" below).
 
@@ -107,11 +107,36 @@ The dashboard exists under five hard design constraints, adopted from the portfo
 
 What it deliberately does not do: act on anything, chart history, or keep any state between polls. If a datum is not a chained event in the store, it is not on the screen.
 
+## Redaction at capture (phase 3)
+
+Payloads are scrubbed **before they are written to the store**, at ingest. The pattern set is agent-gate's screening set, ported name-for-name (`agenttrace/redact.py`): SSNs, card numbers, AWS access keys, private-key blocks, emails, phone numbers — plus the injection/exfil classes (ignore-instructions, export-all-data, secret-exfil-url, …), whose matched text is scrubbed here too, because in an audit store the raw exfil URL is itself the dangerous payload. Redaction is visible, never silent: a scrubbed event carries a `redaction` record naming the pattern classes that fired and the match count — never the redacted values, not even excerpts. A clean event is stored byte-identical with no flag. Raw producer artifacts are never touched; the pass runs on the ingestors' in-memory events and again (idempotently) in `store.append_events`, so no path into the store bypasses it, and the chain verifies over the scrubbed record exactly as written.
+
+## TraceReplay (phase 3)
+
+The debugging workflow from the concept, reading this store only (`agenttrace/replay.py`, CLI `replay` / `diff`):
+
+```bash
+# step through a trace; reconstruct the state at any point
+.venv/bin/python -m agenttrace.cli replay --store <store.jsonl> \
+    --trace-id trace-drill-45d404d0 --step --upto-seq 55
+
+# diff two traces (e.g. a drill and its re-run, in one store or two)
+.venv/bin/python -m agenttrace.cli diff --store <store.jsonl> \
+    --trace-a trace-drill-45d404d0 \
+    --store-b <rerun-store.jsonl> --trace-b trace-drill-217a8fd6
+```
+
+Replay walks a trace's events in seq order and reconstructs the state the store implied at that point — fleet status, decisions so far, cost so far — deterministically (the replay clock is the last event's own timestamp, never wall time). Diff compares two traces event-class by event-class (`source / type / kind`) and names every divergence: classes present in only one trace, count differences, the first sequence divergence, differing decision choices, and the cost delta. Timestamps, seq numbers, and hashes are identity, not behavior, and are excluded — two independent executions of the flagship drill in this repo diff **clean** under it, and the test suite plants divergences (a flipped verdict, a swapped event class, a deleted event) and requires the diff to name them.
+
+## The Rust verifier (phase 3)
+
+`rust/agenttrace-verify/` is a standalone Rust CLI that verifies a store's hash chain (and counts events by producer) with no Python runtime — the bounded Rust accent: Rust at the layer under the agents, as fast portable tooling an assessor can run anywhere. It mirrors the Python verifier's contract byte-for-byte (including Python's canonical-JSON format and `\uXXXX` escaping), and `tests/test_rust_verifier.py` turns that into a test: both verifiers must agree on the sample store and fail at exactly the same seq on a tampered copy. **Verified 2026-11-21: with rustc/cargo 1.100.0 installed, the crate builds clean (`cargo build --release`), the agreement test passes with no skip, and against the real drill store both verifiers agree — chain OK over 117 events on the intact store, BROKEN at exactly seq 8 on its tampered sibling.** The Python verifier remains primary regardless.
+
 ## Quickstart
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 42 tests
+.venv/bin/python -m pytest        # 60 tests (with cargo on PATH, the Rust agreement test runs too)
 
 # store operations over the bundled producer samples:
 .venv/bin/python -m agenttrace.cli ingest --store /tmp/demo.jsonl \
@@ -123,6 +148,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/python -m agenttrace.cli verify --store /tmp/demo.jsonl
 .venv/bin/python -m agenttrace.cli query  --store /tmp/demo.jsonl --kind decision_record
 .venv/bin/python -m agenttrace.cli render --store /tmp/demo.jsonl --out timeline.md
+.venv/bin/python -m agenttrace.cli replay --store /tmp/demo.jsonl --trace-id trace-spike-efadd3b5 --step
 ```
 
 (`samples/ledger-otlp.json` is the same export *without* the external-ID stamp — it ingests under its native OTLP trace ID, which is the correct behavior for an unstamped run.)
@@ -147,17 +173,23 @@ agenttrace/
   ingest.py     one ingestor per producer (canary, gate, blast-radius,
                 ledger OTLP, factory-floor, chaos)
   decisions.py  decision-record extractors (computed decision points only)
+  redact.py     redaction at capture (agent-gate's pattern set, ported)
   query.py      query layer (by trace ID / agent / source / type / kind)
                 + the dashboard view-models (graph nodes, drill beats,
                 decision cards, cost breakdown)
+  replay.py     TraceReplay: step/state reconstruction + trace diffs
   render.py     one-page tree/timeline from the store alone
-  cli.py        ingest / verify / query / render
+  cli.py        ingest / verify / query / render / replay / diff
+rust/agenttrace-verify/  standalone Rust chain verifier (accent; the
+                Python verifier remains primary — verified to agree
+                with it, see its README)
 dashboard/      the read-only live view (server.py: stdlib-only server;
                 index.html: the single page; run_demo.py: runs the real
                 drill and ingests artifacts as producers emit them)
 drill/          the flagship drill (run_drill.py + gate_driver.mjs)
 samples/        real producer outputs used by the contract tests
-tests/          schema, store/chain/tamper, ingest contracts, decisions, query/render
+tests/          schema, store/chain/tamper, ingest contracts, decisions,
+                query/render, redaction, TraceReplay, Rust agreement
 ```
 
 ## Honest limitations
@@ -165,7 +197,8 @@ tests/          schema, store/chain/tamper, ingest contracts, decisions, query/r
 - **Mechanism, not practice.** The drill's agents run on stub/scripted models against a mock cloud. The trace demonstrates the capture, chaining, decision-record, and verification mechanism end-to-end; it does not prove the practice at production volume with real agents or real assessors, and "audit-grade" should not be read as claiming otherwise.
 - **The ledger join covers stamped runs only.** A ledger run joins an external trace only when the run was stamped (`--trace-id` / `AGENTTRACE_TRACE_ID` on the sample agent, or `external_trace_id` on the Ledger). Unstamped exports still land under their native OTLP trace IDs — the ingestor never guesses a mapping the producer didn't declare.
 - **The dashboard is a view, not a control plane.** It renders the store read-only under the five conditions above; it cannot approve, pause, kill, or configure anything, and it shows only what the store already holds — a run that emits nothing renders nothing.
-- **No redaction at capture yet.** The concept calls for screening tool inputs/outputs on the way into the store (reusing gate's patterns). The demo fleet's stored payloads are producer audit records, which already carry excerpts rather than raw secrets — but a general redaction stage is phase 2, and a production deployment should not ingest raw tool payloads without it.
+- **Redaction is pattern-based — a seatbelt, not a proof.** Redaction at capture is now implemented (see above), reusing agent-gate's pattern set, and the same caveat gate states applies here: regex screening catches the classic shapes (formatted SSNs, AWS key prefixes, emails, exfil URLs) and misses novel ones (spaced-out digits, encoded secrets, values split across fields). It makes leaks visible and rare, not impossible; a production deployment handling genuinely sensitive payloads needs more than patterns.
+- **The Rust verifier is an accent, verified but not load-bearing.** The crate in `rust/agenttrace-verify/` builds clean and its agreement test passes against the Python verifier (sample store, tampered copy, and the real drill store — BROKEN at exactly seq 8 on the tampered sibling, matching Python). It remains a bounded accent: the Python verifier is primary, and on a machine without a Rust toolchain the agreement test still skips (loudly) rather than pretending to have run.
 
 ## License
 

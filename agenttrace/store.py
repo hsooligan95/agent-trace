@@ -17,6 +17,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from .redact import redact_events
 from .schema import validate_event
 
 GENESIS = "0" * 64
@@ -102,6 +103,11 @@ def append_events(path: str | Path, events: list[dict]) -> int:
         existing = load_events(path)
         prev = existing[-1]["hash"]
         start_seq = len(existing) + 1
+    # Redaction at capture: scrub secret/PII patterns from payloads
+    # before anything is hashed or written, so the store never holds
+    # the raw values (see redact.py). Idempotent -- ingestors already
+    # applied it; this pass guarantees no caller bypasses it.
+    events = redact_events(events)
     for event in events:
         validate_event(event)
     path.parent.mkdir(parents=True, exist_ok=True)

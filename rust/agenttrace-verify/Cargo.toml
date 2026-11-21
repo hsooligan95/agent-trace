@@ -1,0 +1,13 @@
+[package]
+name = "agenttrace-verify"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone Rust verifier for AgentTrace hash-chained stores: the speed/portability accent. The Python verifier remains primary."
+license = "MIT"
+
+[dependencies]
+serde_json = "1"
+sha2 = "0.10"
+
+[profile.release]
+opt-level = 3

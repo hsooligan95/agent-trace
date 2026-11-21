@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import decisions
+from .redact import redact_events
 from .schema import new_event, validate_event
 
 
@@ -34,6 +35,11 @@ def _read_jsonl(path: str | Path) -> list[dict]:
 
 
 def _finish(events: list[dict]) -> list[dict]:
+    # Redaction at capture: payloads are scrubbed here, on the events
+    # the ingestors produce -- raw producer artifacts are never touched,
+    # and store.append_events re-applies the (idempotent) pass so no
+    # path into the store bypasses it.
+    events = redact_events(events)
     for event in events:
         validate_event(event)
     return events

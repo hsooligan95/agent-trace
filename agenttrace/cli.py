@@ -1,4 +1,4 @@
-"""AgentTrace CLI: ingest / verify / query / render.
+"""AgentTrace CLI: ingest / verify / query / render / replay / diff.
 
 Exit codes: 0 = success (for verify: chain intact); 1 = verification
 failed (broken at the reported seq); 2 = usage or schema error --
@@ -15,6 +15,7 @@ from . import ingest as ingest_mod
 from . import store as store_mod
 from .query import query_events, summarize_event
 from .render import render_timeline
+from .replay import diff_traces, replay_steps, state_at
 from .schema import SchemaError
 
 INGESTORS = {
@@ -78,6 +79,61 @@ def cmd_render(args) -> int:
     return 0
 
 
+def _print_state(state: dict) -> None:
+    print(f"state @ seq {state['last_seq']} ({state['events']} events, "
+          f"last {state['last_ts']})")
+    for f in state["fleet"]:
+        if f["events"]:
+            print(f"  {f['source']:<20} {f['status']:<8} "
+                  f"events={f['events']} last={f['last_type']}")
+    for d in state["decisions"]:
+        print(f"  DECISION #{d['seq']} {d['decision_point']}: {d['choice']}")
+    cost = state["cost"]
+    print(f"  cost so far: ${cost['total_usd']:.5f} "
+          f"({cost['spans']} spans, {cost['billable_steps']} billable steps)")
+
+
+def cmd_replay(args) -> int:
+    events = store_mod.load_events(args.store)
+    if args.step:
+        for event, state in replay_steps(events, args.trace_id):
+            print(f"#{event['seq']:>3} {event['source']:<12} "
+                  f"{event['type']:<18} {summarize_event(event)}")
+            if args.upto_seq is not None and event["seq"] >= args.upto_seq:
+                break
+        print("--")
+    state = state_at(events, args.trace_id, upto_seq=args.upto_seq)
+    if not state["events"]:
+        print(f"no events for trace {args.trace_id}", file=sys.stderr)
+        return 2
+    _print_state(state)
+    return 0
+
+
+def cmd_diff(args) -> int:
+    events_a = store_mod.load_events(args.store)
+    events_b = store_mod.load_events(args.store_b) if args.store_b else events_a
+    if not query_events(events_a, trace_id=args.trace_a):
+        print(f"no events for trace {args.trace_a} in {args.store}",
+              file=sys.stderr)
+        return 2
+    if not query_events(events_b, trace_id=args.trace_b):
+        print(f"no events for trace {args.trace_b} in "
+              f"{args.store_b or args.store}", file=sys.stderr)
+        return 2
+    result = diff_traces(events_a, args.trace_a, events_b, args.trace_b)
+    print(f"{result['trace_a']}: {result['events_a']} events · "
+          f"{result['trace_b']}: {result['events_b']} events")
+    if result["equal"]:
+        print("traces are behaviorally identical "
+              "(event classes, order, decisions, cost)")
+        return 0
+    for d in result["divergences"]:
+        print(f"DIVERGENCE [{d['kind']}] {d['detail']}")
+    print(f"-- {len(result['divergences'])} divergence(s)")
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agenttrace", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -110,6 +166,25 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--trace-id")
     p.add_argument("--out")
     p.set_defaults(func=cmd_render)
+
+    p = sub.add_parser("replay", help="TraceReplay: step through a trace "
+                                      "and reconstruct its state")
+    p.add_argument("--store", required=True)
+    p.add_argument("--trace-id", required=True)
+    p.add_argument("--upto-seq", type=int,
+                   help="reconstruct state at this seq instead of the end")
+    p.add_argument("--step", action="store_true",
+                   help="print each event as it is stepped through")
+    p.set_defaults(func=cmd_replay)
+
+    p = sub.add_parser("diff", help="TraceReplay: diff two traces "
+                                    "event-class by event-class")
+    p.add_argument("--store", required=True)
+    p.add_argument("--trace-a", required=True)
+    p.add_argument("--trace-b", required=True)
+    p.add_argument("--store-b",
+                   help="second store file (default: same store)")
+    p.set_defaults(func=cmd_diff)
 
     args = parser.parse_args(argv)
     try:
