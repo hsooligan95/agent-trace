@@ -8,7 +8,10 @@ layer the CLI uses (agenttrace.query) plus the store's own verifier
 incident endpoints (/api/incidents, /api/incident?seq=N) are derived
 the same way: incidents from the query layer, per-step hash
 consistency recomputed from the chain, state before/after from
-TraceReplay. The server holds no state of its own, opens no
+TraceReplay. The slice-1 tier endpoints (/api/overview, /api/agent,
+/api/agent-events, /api/walk) are the same pattern -- query-layer
+derivations over the store, nothing else. The server holds no state
+of its own, opens no
 producer artifact, and rejects every non-GET request with 405: there
 is no approve / pause / kill / config surface here, by design.
 
@@ -264,6 +267,139 @@ def build_incident_detail(path: Path, anchor_seq: int,
     }
 
 
+def build_overview(path: Path) -> dict:
+    """Tier 1 (admin overview) payload: needs-attention incidents
+    across all traces, chain consistency + head, system tiles with
+    visible components, the fleet table, the decision feed. Derived
+    from the store alone, like everything here."""
+    events = load_store_events(path)
+    head = events[-1] if events else None
+    return {
+        "store": path.name,
+        "server_time": time.time(),
+        "chain": chain_status(path),
+        "head": {"seq": head["seq"], "hash": head["hash"]} if head else None,
+        "incidents": query_mod.all_incidents(events),
+        **query_mod.overview(events, now=time.time()),
+    }
+
+
+def build_agent(path: Path, source: str) -> dict | None:
+    """Tier 2 (per-agent-type) payload, or None for an unknown source."""
+    events = load_store_events(path)
+    summary = query_mod.source_summary(events, source, now=time.time())
+    if summary is None:
+        return None
+    summary["chain"] = chain_status(path)
+    return summary
+
+
+def build_agent_events(path: Path, source: str, *, kind: str | None = None,
+                       type: str | None = None, trace_id: str | None = None,
+                       decisions_only: bool = False,
+                       limit: int = 150) -> dict:
+    """Tier 2 faceted event stream for one source: newest first,
+    capped, with the matched total so the cap is never silent."""
+    events = load_store_events(path)
+    mine = query_mod.query_events(events, source=source, kind=kind,
+                                  type=type, trace_id=trace_id)
+    if decisions_only:
+        mine = [e for e in mine if e["kind"] == "decision_record"]
+    total = len(mine)
+    rows = [{
+        "seq": e["seq"], "ts": e["ts"], "trace_id": e["trace_id"],
+        "agent": e["agent"], "type": e["type"], "kind": e["kind"],
+        "summary": query_mod.summarize_event(e),
+    } for e in mine[-limit:]][::-1]
+    return {"source": source, "total": total, "shown": len(rows),
+            "events": rows}
+
+
+# Event types that close out a producer's run -- the walk's anchor
+# when present, else the run's last event.
+_WALK_TERMINAL_TYPES = ("run_finished", "compare_verdict", "chaos_report",
+                        "outcome", "run_end")
+
+
+def build_walk(path: Path, source: str,
+               trace_id: str | None = None) -> dict | None:
+    """A step-through over one run of one source in one trace -- the
+    incident view's machinery, scoped to a run (slice 1's reuse;
+    slice 2 generalizes replay). Same shape as build_incident_detail:
+    steps with payload + diff + per-step hash consistency, and the
+    TraceReplay state before/after the anchor. None when the source
+    has no events in the trace."""
+    events = load_store_events(path)
+    if not events:
+        return None
+    trace_id = trace_id or events[-1]["trace_id"]
+    mine = query_mod.query_events(events, trace_id=trace_id, source=source)
+    if not mine:
+        return None
+    anchor = next((e for e in reversed(mine)
+                   if e["type"] in _WALK_TERMINAL_TYPES), mine[-1])
+    flags = chain_flags(events)
+    steps = []
+    prev_payload = None
+    for e in mine:
+        steps.append({
+            "seq": e["seq"], "ts": e["ts"], "source": e["source"],
+            "agent": e["agent"], "type": e["type"], "kind": e["kind"],
+            "summary": query_mod.summarize_event(e),
+            "payload": e["payload"],
+            "diff": payload_diff(prev_payload, e["payload"]),
+            "verified": flags.get(e["seq"], False),
+            "is_anchor": e["seq"] == anchor["seq"],
+        })
+        prev_payload = e["payload"]
+    tallies = query_mod.decision_tallies(mine)
+    b = tallies["buckets"]
+    why = [{"seq": mine[0]["seq"], "text":
+            f"{source} in {trace_id}: {len(mine)} events, "
+            f"#{mine[0]['seq']}–#{mine[-1]['seq']}."}]
+    if tallies["total"] or b["rollback"]:
+        why.append({"seq": anchor["seq"], "text":
+                    f"Decisions in this run: {tallies['total']} computed "
+                    f"record(s) — allow {b['allow']} · block {b['block']} · "
+                    f"rollback {b['rollback']} · other {b['other']}."})
+    for r in query_mod.decision_reasons(mine, limit=4):
+        why.append({"seq": anchor["seq"],
+                    "text": f"{r['label']} (×{r['count']})"})
+    incident = {
+        "id": f"walk-{source}-{anchor['seq']}",
+        "kind": "run",
+        "trace_id": trace_id,
+        "source": source,
+        "agent": anchor["agent"],
+        "seq": anchor["seq"],
+        "ts": anchor["ts"],
+        "title": f"{source} — run in {trace_id}",
+        "summary": query_mod.summarize_event(anchor),
+        "window": {"from_seq": mine[0]["seq"], "to_seq": mine[-1]["seq"]},
+        "why": why,
+        "cost_usd": (query_mod.cost_summary(mine)["total_usd"]
+                     if source == "agent-ledger"
+                     and query_mod.cost_summary(mine)["spans"] else None),
+    }
+    return {
+        "incident": incident,
+        "trace_id": trace_id,
+        "anchor": {
+            "seq": anchor["seq"], "ts": anchor["ts"],
+            "source": anchor["source"], "agent": anchor["agent"],
+            "type": anchor["type"], "kind": anchor["kind"],
+            "payload": anchor["payload"],
+        },
+        "steps": steps,
+        "first_unverified_seq": next(
+            (s["seq"] for s in steps if not s["verified"]), None),
+        "state_before": _compact_state(replay_mod.state_at(
+            events, trace_id, upto_seq=anchor["seq"] - 1)),
+        "state_after": _compact_state(replay_mod.state_at(
+            events, trace_id, upto_seq=anchor["seq"])),
+    }
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     store_path: Path = Path("store.jsonl")
     protocol_version = "HTTP/1.1"
@@ -295,6 +431,43 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 qs = parse_qs(parsed.query)
                 after = int(qs.get("after_seq", ["0"])[0])
                 self._json(200, build_events_after(self.store_path, after))
+            elif parsed.path == "/api/overview":
+                self._json(200, build_overview(self.store_path))
+            elif parsed.path == "/api/agent":
+                qs = parse_qs(parsed.query)
+                source = qs.get("source", [""])[0]
+                payload = build_agent(self.store_path, source) if source else None
+                if payload is None:
+                    self._json(404, {"error": "no such agent type"})
+                else:
+                    self._json(200, payload)
+            elif parsed.path == "/api/agent-events":
+                qs = parse_qs(parsed.query)
+                source = qs.get("source", [""])[0]
+                if not source:
+                    self._json(400, {"error": "source is required"})
+                else:
+                    try:
+                        limit = max(1, min(500, int(
+                            qs.get("limit", ["150"])[0])))
+                    except ValueError:
+                        limit = 150
+                    self._json(200, build_agent_events(
+                        self.store_path, source,
+                        kind=qs.get("kind", [None])[0] or None,
+                        type=qs.get("type", [None])[0] or None,
+                        trace_id=qs.get("trace", [None])[0] or None,
+                        decisions_only=qs.get("decisions", ["0"])[0] == "1",
+                        limit=limit))
+            elif parsed.path == "/api/walk":
+                qs = parse_qs(parsed.query)
+                source = qs.get("source", [""])[0]
+                walk = build_walk(self.store_path, source,
+                                  qs.get("trace", [None])[0]) if source else None
+                if walk is None:
+                    self._json(404, {"error": "no such run"})
+                else:
+                    self._json(200, walk)
             elif parsed.path == "/api/incidents":
                 self._json(200, build_incidents(self.store_path))
             elif parsed.path == "/api/incident":

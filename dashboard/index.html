@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgentTrace — Fleet Graph · Ops Console</title>
+<title>AgentTrace — Ops Console</title>
 <style>
   :root{
     --bg:#07090b; --panel:#0e1116; --panel2:#0a0d11; --line:#1e242e; --line2:#2a313d;
@@ -35,19 +35,71 @@
              background:var(--faint);margin-right:6px;vertical-align:1px}
   .live.on .dot{background:var(--ok);animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  /* view nav */
+  #viewnav{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  #viewnav button{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;
+    background:var(--panel);color:var(--dim);border:1px solid var(--line2);
+    padding:6px 14px;cursor:pointer;border-radius:2px}
+  #viewnav button:hover{color:var(--ink);border-color:var(--amber)}
+  #viewnav button.on{color:#0a0c0f;background:var(--amber);border-color:var(--amber);font-weight:700}
+  #viewnav .where{color:var(--amber);font-size:11.5px;letter-spacing:.1em}
+  #viewnav .store{color:var(--faint);font-size:11px;margin-left:auto}
   /* stat strip (ops console) */
   .stats{display:flex;border:1px solid var(--line);margin-top:14px;background:var(--panel2);
          flex-wrap:wrap}
   .stat{flex:1;padding:9px 14px;border-right:1px solid var(--line);min-width:150px}
   .stat:last-child{border-right:none}
   .stat .k{font-size:9px;letter-spacing:.26em;color:var(--faint);display:block}
-  .stat .v{font-size:15px;color:#eceff3;font-weight:600;white-space:nowrap}
+  .stat .v{font-size:15px;color:#eceff3;font-weight:600}
   .stat .v small{font-size:11px;color:var(--dim);font-weight:400}
   /* pending approvals */
   #pending{display:none;margin-top:12px;border:1px solid var(--amber);
            background:#171307;padding:8px 12px;color:#e9d9b8}
   #pending .h{color:var(--amber);letter-spacing:.14em;font-size:11px;font-weight:700}
   #pending div{margin-top:3px}
+  .pendbox{margin-top:12px;border:1px solid var(--amber);
+           background:#171307;padding:8px 12px;color:#e9d9b8}
+  .pendbox .h{color:var(--amber);letter-spacing:.14em;font-size:11px;font-weight:700}
+  /* integrity strip (tier 1) */
+  #integrity{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:12px;
+             border:1px solid var(--line);border-left:3px solid var(--ok);
+             background:var(--panel2);padding:9px 13px}
+  #integrity.broken{border-left-color:var(--bad);background:#2a0f0e}
+  #integrity .big{color:#eceff3;font-weight:700;letter-spacing:.12em;font-size:12px}
+  #integrity .ok-t{color:var(--ok);font-weight:700}
+  #integrity .bad-t{color:var(--bad);font-weight:700}
+  #integrity .note{color:var(--faint);font-size:11px;margin-left:auto;text-align:right}
+  /* fleet table (tier 1) + runs table (tier 2) */
+  .ftable{width:100%;border-collapse:collapse;font-size:12px}
+  .ftable th{font-size:9.5px;letter-spacing:.22em;color:var(--faint);text-align:left;
+             padding:4px 8px;border-bottom:1px solid var(--line2);font-weight:600;white-space:nowrap}
+  .ftable td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .ftable tbody tr.clickable{cursor:pointer}
+  .ftable tbody tr.clickable:hover{background:#12161d}
+  .ftable .src{color:#eceff3;font-weight:700;font-size:12.5px;white-space:nowrap}
+  .ftable .hl{font-size:10.5px;letter-spacing:.05em;white-space:nowrap}
+  .ftable .sub{color:var(--faint);font-size:11px}
+  .ftable .num{color:var(--ink);white-space:nowrap}
+  .stdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+  .tally{white-space:nowrap;color:var(--faint)}
+  .tally b{font-weight:700}
+  .tally .a{color:var(--ok)} .tally .b{color:var(--bad)}
+  .tally .r{color:var(--orange)} .tally .o{color:var(--dim)}
+  .walk-link{color:var(--amber);white-space:nowrap;cursor:pointer;font-size:11.5px}
+  .walk-link:hover{text-decoration:underline}
+  /* facet chips (tier 2) */
+  .facetrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+  .facetrow .fl{font-size:9.5px;letter-spacing:.22em;color:var(--faint);min-width:54px}
+  .chip{font-family:var(--mono);font-size:11px;background:var(--panel);color:var(--dim);
+        border:1px solid var(--line2);padding:2px 9px;cursor:pointer;border-radius:2px}
+  .chip:hover{color:var(--ink)}
+  .chip.on{color:var(--amber);border-color:var(--amber)}
+  .chip .n{color:var(--faint)} .chip.on .n{color:var(--amber)}
+  /* reasons / outcomes (tier 2) */
+  .reason-row{display:flex;justify-content:space-between;gap:12px;padding:2.5px 0;
+              font-size:11.5px;color:var(--dim);border-bottom:1px solid var(--panel)}
+  .reason-row .n{color:var(--amber);font-weight:700;white-space:nowrap}
+  .reason-row .tg{color:var(--orange);font-size:9.5px;letter-spacing:.14em;margin-left:7px}
   /* fleet graph (fleet-graph layer, ops palette) */
   .diagram{margin-top:14px;background:radial-gradient(circle at 1px 1px,#161c24 1px,transparent 0) 0 0/26px 26px,var(--panel2);
            border:1px solid var(--line);padding:6px}
@@ -80,6 +132,7 @@
   @media (max-width:900px){main{grid-template-columns:1fr}}
   section{background:var(--panel2);border:1px solid var(--line);padding:11px 13px;min-width:0}
   section + section{margin-top:12px}
+  #view-overview > section, #view-agent > section{margin-top:12px}
   main > section{margin-top:0}
   h2{font-size:10px;letter-spacing:.26em;color:var(--dim);margin:0 0 9px;font-weight:600}
   h2 .sub{color:var(--faint);letter-spacing:.04em}
@@ -106,6 +159,12 @@
   .dec-card .choice.good{color:var(--ok)}
   .dec-card .ev{color:var(--dim);font-size:11.5px;margin-top:3px;overflow:hidden;
                 text-overflow:ellipsis;white-space:nowrap}
+  .feed-row{display:flex;gap:8px;padding:3px 4px;font-size:12px;white-space:nowrap;overflow:hidden}
+  .feed-row .seq{color:var(--faint);min-width:36px;text-align:right}
+  .feed-row .src{color:var(--amber);min-width:118px;overflow:hidden;text-overflow:ellipsis}
+  .feed-row .ch{font-weight:700;letter-spacing:.06em}
+  .feed-row .ch.bad{color:var(--bad)} .feed-row .ch.warn{color:var(--amber)} .feed-row .ch.good{color:var(--ok)}
+  .feed-row .sm{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
   .cost-row{display:flex;justify-content:space-between;color:var(--dim);font-size:11.5px;padding:1px 0}
   .cost-row b{color:var(--ink);font-weight:600}
   .bar{height:4px;background:var(--line);margin:2px 0 7px}
@@ -113,10 +172,10 @@
   .empty-note{color:var(--faint);padding:8px 4px}
   footer{margin-top:14px;color:var(--faint);font-size:11px;letter-spacing:.05em;
          border-top:1px solid var(--line);padding-top:8px}
-  /* incidents (prototype: incident-first entry path) */
+  /* incidents (incident-first entry path) */
   #incidents-panel{margin-top:12px}
   .inc-row{display:flex;gap:10px;align-items:baseline;padding:7px 9px;cursor:pointer;
-           border:1px solid var(--line);margin-bottom:7px;background:var(--panel)}
+           flex-wrap:wrap;border:1px solid var(--line);margin-bottom:7px;background:var(--panel)}
   .inc-row:hover{border-color:var(--line2);background:#12161d}
   .inc-row .kind{font-size:10px;font-weight:700;letter-spacing:.14em;padding:2px 8px;
                  border:1px solid;white-space:nowrap}
@@ -124,14 +183,18 @@
   .inc-row .kind.rollback{color:var(--orange);border-color:var(--orange)}
   .inc-row .ttl{color:#eceff3;font-weight:600}
   .inc-row .meta{color:var(--faint);font-size:11px;white-space:nowrap}
-  .inc-row .sum{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .inc-row .sum{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 160px;min-width:0}
   .inc-row .open{color:var(--amber);font-size:11px;white-space:nowrap}
+  .att-pend{border:1px solid var(--amber);background:#171307;color:#e9d9b8;
+            padding:7px 9px;margin-bottom:7px;font-size:12px}
+  .att-pend .h{color:var(--amber);letter-spacing:.14em;font-size:11px;font-weight:700}
   /* incident view */
   #incident-view{display:none}
   .inc-back{color:var(--amber);cursor:pointer;font-size:12px;letter-spacing:.1em;
             margin:6px 0 10px;display:inline-block}
   .inc-back:hover{text-decoration:underline}
-  #incident-view h1{font-size:19px;margin:0 0 2px;color:#eceff3;font-weight:700}
+  #incident-view h1, #view-agent h1{font-size:19px;margin:0 0 2px;color:#eceff3;font-weight:700}
+  .ag-role{color:var(--dim);font-size:12.5px;margin:1px 0 3px}
   .inc-meta{color:var(--dim);font-size:12px;margin-bottom:12px}
   .inc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
   @media (max-width:900px){.inc-cols{grid-template-columns:1fr}}
@@ -192,6 +255,61 @@
   <span class="pill" id="chain">CHAIN —</span>
 </header>
 
+<nav id="viewnav">
+  <button id="nav-overview" type="button">OVERVIEW</button>
+  <button id="nav-topology" type="button">TOPOLOGY — FLEET GRAPH</button>
+  <span class="where" id="nav-agent"></span>
+  <span class="store" id="nav-store"></span>
+</nav>
+
+<div id="view-overview">
+  <section id="attention">
+    <h2>NEEDS ATTENTION <span class="sub">— blocks, rollbacks &amp; pending approvals across every trace · click an incident to walk its causal window</span></h2>
+    <div id="att-list"><div class="empty-note">—</div></div>
+  </section>
+
+  <div id="integrity">
+    <span class="big">CHAIN CONSISTENCY</span>
+    <span id="int-main">—</span>
+    <span class="note">internal consistency of the record — every hash recomputed against the
+      store copy served here. Not provenance: this does not prove who wrote the events.</span>
+  </div>
+
+  <div class="stats" id="ov-stats">
+    <div class="stat"><span class="k">EVENTS</span><span class="v"><span id="ov-events">0</span> <small id="ov-prod"></small></span></div>
+    <div class="stat"><span class="k">TRACES</span><span class="v" id="ov-traces">0</span></div>
+    <div class="stat"><span class="k">DECISION RECORDS</span><span class="v"><span id="ov-dec">0</span> <small>computed</small></span></div>
+    <div class="stat"><span class="k">DECISIONS — ALLOW · BLOCK · ROLLBACK</span><span class="v" id="ov-buckets">—</span></div>
+    <div class="stat"><span class="k">TOTAL COST</span><span class="v"><span id="ov-cost">—</span> <small id="ov-costsub"></small></span></div>
+    <div class="stat"><span class="k">WINDOW</span><span class="v" id="ov-window">—</span></div>
+  </div>
+
+  <section id="fleet-sec">
+    <h2>FLEET — ONE ROW PER AGENT TYPE <span class="sub">— whole store · status is categorical, components visible — no blended score · click a row for that type's page</span></h2>
+    <div style="overflow-x:auto">
+    <table class="ftable" id="fleet-table">
+      <thead><tr>
+        <th>AGENT TYPE</th><th>STATUS</th><th>RUNS</th><th>EVENTS</th>
+        <th>DECISIONS</th><th>COST</th><th>EVENT RATE</th><th>LAST EVENT</th>
+      </tr></thead>
+      <tbody id="fleet-body"><tr><td colspan="8" class="sub">—</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
+  <main id="ov-cols">
+    <section>
+      <h2>DECISION FEED <span class="sub">— latest computed decision records, whole store</span></h2>
+      <div id="ov-feed"><div class="empty-note">—</div></div>
+    </section>
+    <section>
+      <h2>COST BREAKDOWN <span class="sub">— agent-ledger, top billable steps · cost exists only where the ledger emitted spans</span></h2>
+      <div id="ov-costbars"><div class="empty-note">—</div></div>
+    </section>
+  </main>
+</div>
+
+<div id="view-topology" style="display:none">
 <div class="stats" id="statsbar">
   <div class="stat"><span class="k">ACTIVE TRACE</span><span class="v" id="trace">—</span></div>
   <div class="stat"><span class="k">EVENTS</span><span class="v"><span id="count">0</span> <small id="producers"></small></span></div>
@@ -246,14 +364,61 @@
     </section>
   </div>
 </main>
+</div>
+
+<div id="view-agent" style="display:none">
+  <span class="inc-back" id="ag-back">← OVERVIEW</span>
+  <h1 id="ag-name">—</h1>
+  <div class="ag-role" id="ag-role"></div>
+  <div class="inc-meta" id="ag-meta"></div>
+
+  <div class="stats" id="ag-stats">
+    <div class="stat"><span class="k">EVENTS</span><span class="v" id="ag-events">0</span></div>
+    <div class="stat"><span class="k">RUNS</span><span class="v" id="ag-runs-n">0</span></div>
+    <div class="stat"><span class="k">DECISION RECORDS</span><span class="v"><span id="ag-dec">0</span> <small id="ag-decsub"></small></span></div>
+    <div class="stat"><span class="k">COST</span><span class="v"><span id="ag-cost">—</span> <small id="ag-costsub"></small></span></div>
+    <div class="stat"><span class="k">WINDOW</span><span class="v" id="ag-window">—</span></div>
+  </div>
+
+  <div class="pendbox" id="ag-pending" style="display:none"></div>
+
+  <section>
+    <h2>RUNS <span class="sub">— grouped by trace. The store carries no instance field yet, so one row is one trace's worth of this agent — a run, not a process instance.</span></h2>
+    <div style="overflow-x:auto">
+    <table class="ftable" id="ag-runs-table">
+      <thead><tr>
+        <th>TRACE</th><th>EVENTS</th><th>DECISIONS</th><th>COST</th>
+        <th>OUTCOME</th><th>FIRST → LAST</th><th></th>
+      </tr></thead>
+      <tbody id="ag-runs-body"><tr><td colspan="7" class="sub">—</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
+  <main id="ag-cols">
+    <section>
+      <h2>DECISIONS — BY CHOICE</h2>
+      <div id="ag-choices"><div class="empty-note">—</div></div>
+      <h2 style="margin-top:14px">REASONS &amp; TRIGGERS <span class="sub">— why, not just how many</span></h2>
+      <div id="ag-reasons"><div class="empty-note">—</div></div>
+      <h2 style="margin-top:14px">OUTCOMES</h2>
+      <div id="ag-outcomes"><div class="empty-note">—</div></div>
+    </section>
+    <section class="stream">
+      <h2>EVENT STREAM — THIS TYPE ONLY <span class="sub" id="ag-stream-sub"></span></h2>
+      <div id="ag-facets"></div>
+      <div id="ag-stream"><div class="empty-note">—</div></div>
+    </section>
+  </main>
+</div>
 
 <div id="incident-view">
-  <span class="inc-back" id="inc-back">← BACK TO OVERVIEW</span>
+  <span class="inc-back" id="inc-back">← BACK</span>
   <h1 id="inc-title">—</h1>
   <div class="inc-meta" id="inc-meta"></div>
 
   <section class="inc-block">
-    <h2>WHY — THE SHORT ANSWER <span class="sub">— assembled from the window's own records</span></h2>
+    <h2 id="inc-why-h">WHY — THE SHORT ANSWER <span class="sub">— assembled from the window's own records</span></h2>
     <ol id="inc-why"></ol>
   </section>
 
@@ -290,7 +455,7 @@
 
 <footer id="pagefoot">READ-ONLY VIEW — every element on this page, the graph included, is rendered from
   chained events in the AgentTrace store, through the same query layer as the CLI.
-  This page has no controls, no accounts, and no state of its own, by design.</footer>
+  This page has no controls that change anything, no accounts, and no state of its own, by design.</footer>
 
 <script>
 "use strict";
@@ -298,7 +463,63 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
   c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const hhmmss = ts => { if(!ts) return "—"; const d = new Date(ts); return isNaN(d) ? ts : d.toLocaleTimeString("en-GB"); };
+const trunc = (s, n) => s && s.length > n ? s.slice(0, n - 1) + "…" : (s || "");
 let lastCount = -1, lastSeq = 0, lastChange = Date.now();
+
+function updateLive(count){
+  if (count !== lastCount){
+    if (lastCount >= 0) lastChange = Date.now();
+    lastCount = count;
+  }
+  const live = $("live");
+  if (Date.now() - lastChange < 4000 && count > 0){
+    live.className = "live on"; $("livetxt").textContent = "LIVE — EVENTS LANDING";
+  } else {
+    live.className = "live"; $("livetxt").textContent = count ? "TAILING — NO NEW EVENTS" : "TAILING — STORE EMPTY";
+  }
+}
+
+function updateChainPill(c){
+  const pill = $("chain");
+  if (c.status === "ok"){ pill.className = "pill ok"; pill.innerHTML = "CHAIN <b>VERIFIED</b> — " + c.count + " EVENTS"; }
+  else if (c.status === "broken"){ pill.className = "pill broken"; pill.textContent = "CHAIN BROKEN @ SEQ " + c.broken_seq; }
+  else if (c.status === "empty"){ pill.className = "pill"; pill.textContent = "CHAIN — EMPTY STORE"; }
+  else { pill.className = "pill"; pill.textContent = "CHAIN " + c.status.toUpperCase(); }
+}
+
+function sparkSVG(buckets, tone){
+  if (!buckets || !buckets.length) return "";
+  const w = 96, h = 22, max = Math.max.apply(null, buckets) || 1;
+  const pts = buckets.map((v, i) =>
+    (i / (buckets.length - 1) * (w - 4) + 2).toFixed(1) + "," +
+    (h - 2 - v / max * (h - 5)).toFixed(1)).join(" ");
+  return '<svg width="' + w + '" height="' + h + '" aria-hidden="true">'
+    + '<polyline points="' + pts + '" fill="none" stroke="' + (tone || "#e8a33d")
+    + '" stroke-width="1.4" opacity=".85"/></svg>';
+}
+
+function tallyHTML(b){
+  if (!b) return "—";
+  const total = b.allow + b.block + b.rollback + b.other;
+  if (!total) return '<span class="tally">—</span>';
+  let s = '<span class="tally"><span class="a">A <b>' + b.allow + '</b></span> · '
+        + '<span class="b">B <b>' + b.block + '</b></span> · '
+        + '<span class="r">R <b>' + b.rollback + '</b></span>';
+  if (b.other) s += ' · <span class="o">other <b>' + b.other + '</b></span>';
+  return s + '</span>';
+}
+
+function costHTML(v){ return v == null ? "—" : "$" + Number(v).toFixed(5); }
+
+function renderCostBars(el, steps){
+  if ((steps || []).length){
+    const max = Math.max.apply(null, steps.map(r => r.cost_usd)) || 1;
+    el.innerHTML = steps.map(r =>
+      '<div class="cost-row"><span>' + esc(r.label) + '</span><b>$' + r.cost_usd.toFixed(5) + '</b></div>'
+      + '<div class="bar"><i style="width:' + Math.max(2, Math.round(r.cost_usd / max * 100)) + '%"></i></div>'
+    ).join("");
+  } else el.innerHTML = '<div class="empty-note">—</div>';
+}
 
 /* ---- fleet graph (SVG, positions from the fleet-graph mockup) ---- */
 const LAYOUT = {
@@ -333,7 +554,6 @@ const EMIT_PATHS = {
   "agent-ledger":        {d:"M990,442 C920,470 840,486 770,494",  lx:880,  ly:478},
   "agent-chaos":         {d:"M1240,250 C1240,380 1060,470 880,494", lx:1150, ly:420},
 };
-const trunc = (s, n) => s && s.length > n ? s.slice(0, n - 1) + "…" : (s || "");
 
 function renderGraph(st){
   const nodes = st.nodes || [];
@@ -343,13 +563,11 @@ function renderGraph(st){
     + '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#77808d"/></marker>'
     + '<marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8a33d"/></marker>'
     + '</defs>';
-  // drill sequence (dashed)
   s += '<g stroke="#77808d" stroke-width="1.6" stroke-dasharray="6 5" fill="none" opacity=".7">'
      + SEQ_PATHS.map(p => '<path d="' + p.d + '" marker-end="url(#arr)"/>').join("") + '</g>'
      + '<g font-size="12" fill="#07090b">'
      + SEQ_PATHS.map(p => '<circle cx="' + p.nx + '" cy="' + p.ny + '" r="10" fill="#77808d"/>'
          + '<text x="' + p.nx + '" y="' + (p.ny + 4) + '" text-anchor="middle" font-weight="700">' + p.n + '</text>').join("") + '</g>';
-  // emit edges into the store (amber), labelled with per-trace counts
   s += '<g stroke="#e8a33d" stroke-width="1.6" fill="none" opacity=".55">'
      + Object.keys(EMIT_PATHS).map(k => '<path d="' + EMIT_PATHS[k].d + '" marker-end="url(#arrA)"/>').join("") + '</g>'
      + '<g font-size="11.5" fill="#e8a33d">'
@@ -358,7 +576,6 @@ function renderGraph(st){
          return '<text x="' + EMIT_PATHS[k].lx + '" y="' + EMIT_PATHS[k].ly + '">'
               + (n ? n.events + " ev" : "0 ev") + '</text>';
        }).join("") + '</g>';
-  // nodes
   nodes.forEach((n, i) => {
     const L = LAYOUT[n.source] || Object.assign({w:262, h:104}, FALLBACK_POS[i % FALLBACK_POS.length]);
     const tone = TONES[n.tone] || TONES.idle;
@@ -373,7 +590,6 @@ function renderGraph(st){
       + '<text x="' + (L.x + 22) + '" y="' + (L.y + 82) + '" font-size="11" fill="#77808d">' + esc(trunc(n.detail, maxChars)) + '</text>'
       + '</g>';
   });
-  // store hub — reflects the chain verdict
   const c = st.chain;
   const hubStroke = c.status === "broken" ? "#e5534b" : "#e8a33d";
   const hubText = c.status === "ok" ? "hash chain · " + st.events + " events · VERIFIED ✓ · tamper-evident"
@@ -412,15 +628,9 @@ function choiceClass(choice){
   return "good";
 }
 
+/* ---- topology view (the original single-trace page, demoted) ---- */
 function render(st){
-  // chain pill
-  const c = st.chain, pill = $("chain");
-  if (c.status === "ok"){ pill.className = "pill ok"; pill.innerHTML = "CHAIN <b>VERIFIED</b> — " + c.count + " EVENTS"; }
-  else if (c.status === "broken"){ pill.className = "pill broken"; pill.textContent = "CHAIN BROKEN @ SEQ " + c.broken_seq; }
-  else if (c.status === "empty"){ pill.className = "pill"; pill.textContent = "CHAIN — EMPTY STORE"; }
-  else { pill.className = "pill"; pill.textContent = "CHAIN " + c.status.toUpperCase(); }
-
-  // stat strip
+  updateChainPill(st.chain);
   $("trace").textContent = st.active_trace || "—";
   $("count").textContent = st.events;
   const prod = (st.nodes || []).filter(n => n.events > 0).length;
@@ -429,7 +639,6 @@ function render(st){
   $("cost").textContent = st.cost.spans ? "$" + st.cost.total_usd.toFixed(5) : "—";
   $("costsub").textContent = st.cost.spans ? st.cost.spans + " spans · " + st.cost.billable_steps + " steps" : "";
   $("pendn").textContent = st.pending_approvals.length;
-  // window: first → last event time of the active trace, from the tree
   let tss = [];
   (st.tree || []).forEach(b => b.events.forEach(e => tss.push(e.ts)));
   if (tss.length){
@@ -438,7 +647,6 @@ function render(st){
     $("window").innerHTML = hhmmss(first) + " → " + hhmmss(last) + " <small>" + dur + "s</small>";
   } else $("window").textContent = "—";
 
-  // pending approvals (display only)
   const pb = $("pending");
   if (st.pending_approvals.length){
     pb.style.display = "block";
@@ -451,8 +659,7 @@ function render(st){
   renderRibbon(st);
   renderIncidents(st);
 
-  // span tree / timeline
-  const brokenSeq = (c.status === "broken") ? c.broken_seq : null;
+  const brokenSeq = (st.chain.status === "broken") ? st.chain.broken_seq : null;
   if (st.tree.length){
     $("treesub").textContent = "— " + (st.active_trace || "") + " · store order";
     $("tree").innerHTML = st.tree.map(b =>
@@ -470,7 +677,6 @@ function render(st){
     $("tree").innerHTML = '<div class="empty-note">No events yet — waiting for a run to write to the store.</div>';
   }
 
-  // decision records
   if ((st.decisions || []).length){
     $("decisions").innerHTML = st.decisions.map(d =>
       '<div class="dec-card"><div class="h"><span class="pt">#' + d.seq + ' · ' + esc(d.decision_point) + '</span>'
@@ -479,7 +685,6 @@ function render(st){
     ).join("");
   } else $("decisions").innerHTML = '<div class="empty-note">—</div>';
 
-  // event stream
   if (st.stream.length){
     $("stream").innerHTML = st.stream.map(e =>
       '<div class="row' + (e.kind === "decision_record" ? " decision" : "") + (e.seq === brokenSeq ? " brokenrow" : "") + '">' +
@@ -489,64 +694,75 @@ function render(st){
     ).join("");
   } else $("stream").innerHTML = '<div class="empty-note">—</div>';
 
-  // cost bars
-  if ((st.cost_steps || []).length){
-    const max = Math.max.apply(null, st.cost_steps.map(r => r.cost_usd)) || 1;
-    $("costbars").innerHTML = st.cost_steps.map(r =>
-      '<div class="cost-row"><span>' + esc(r.label) + '</span><b>$' + r.cost_usd.toFixed(5) + '</b></div>'
-      + '<div class="bar"><i style="width:' + Math.max(2, Math.round(r.cost_usd / max * 100)) + '%"></i></div>'
-    ).join("");
-  } else $("costbars").innerHTML = '<div class="empty-note">—</div>';
+  renderCostBars($("costbars"), st.cost_steps);
 
-  // liveness: honest — "live" only while new events are actually landing
-  if (st.events !== lastCount){
-    if (lastCount >= 0) lastChange = Date.now();
-    lastCount = st.events;
-    lastSeq = st.stream.length ? Math.max.apply(null, st.stream.map(e => e.seq)) : lastSeq;
-  }
-  const live = $("live");
-  if (Date.now() - lastChange < 4000 && st.events > 0){
-    live.className = "live on"; $("livetxt").textContent = "LIVE — EVENTS LANDING";
-  } else {
-    live.className = "live"; $("livetxt").textContent = st.events ? "TAILING — NO NEW EVENTS" : "TAILING — STORE EMPTY";
-  }
+  if (st.stream.length) lastSeq = Math.max.apply(null, st.stream.map(e => e.seq));
+  updateLive(st.events);
 }
 
-/* ---- incidents (prototype) ---- */
+async function poll(){
+  try { const r = await fetch("/api/state", {cache:"no-store"}); render(await r.json()); }
+  catch(e){ $("livetxt").textContent = "SERVER UNREACHABLE"; $("live").className = "live"; }
+}
+
+/* ---- incidents + run walks: one step-through machinery ---- */
+function incidentRowHTML(i){
+  return '<div class="inc-row" data-seq="' + i.seq + '" data-trace="' + esc(i.trace_id) + '">'
+    + '<span class="kind ' + esc(i.kind) + '">' + (i.kind === "block" ? "BLOCK" : "ROLLED BACK") + '</span>'
+    + '<span class="ttl">' + esc(i.title) + '</span>'
+    + '<span class="sum">' + esc(i.summary) + '</span>'
+    + '<span class="meta">' + esc(i.source) + ' · #' + i.seq + ' · ' + hhmmss(i.ts)
+    + (i.cost_usd != null ? ' · $' + i.cost_usd.toFixed(5) : '') + '</span>'
+    + '<span class="open">WALK IT →</span></div>';
+}
+
+function bindIncidentRows(container){
+  Array.prototype.forEach.call(container.querySelectorAll(".inc-row"), row => {
+    row.addEventListener("click", () =>
+      openIncident(row.getAttribute("data-seq"), row.getAttribute("data-trace")));
+  });
+}
+
 function renderIncidents(st){
   const list = st.incidents || [];
   if (!list.length){
     $("incidents").innerHTML = '<div class="empty-note">No block or rollback incidents in this trace.</div>';
     return;
   }
-  $("incidents").innerHTML = list.map(i =>
-    '<div class="inc-row" data-seq="' + i.seq + '">'
-    + '<span class="kind ' + esc(i.kind) + '">' + (i.kind === "block" ? "BLOCK" : "ROLLED BACK") + '</span>'
-    + '<span class="ttl">' + esc(i.title) + '</span>'
-    + '<span class="sum">' + esc(i.summary) + '</span>'
-    + '<span class="meta">' + esc(i.source) + ' · #' + i.seq + ' · ' + hhmmss(i.ts)
-    + (i.cost_usd != null ? ' · $' + i.cost_usd.toFixed(5) : '') + '</span>'
-    + '<span class="open">WALK IT →</span></div>'
-  ).join("");
-  Array.prototype.forEach.call(document.querySelectorAll(".inc-row"), row => {
-    row.addEventListener("click", () => openIncident(row.getAttribute("data-seq")));
-  });
+  $("incidents").innerHTML = list.map(incidentRowHTML).join("");
+  bindIncidentRows($("incidents"));
 }
 
 let incData = null, incIdx = 0;
-const OVERVIEW_IDS = ["statsbar", "pending", "diagram", "ribbon", "incidents-panel", "mainwrap", "pagefoot"];
+const VIEW_IDS = ["view-overview", "view-topology", "view-agent", "pagefoot"];
 
-async function openIncident(seq){
+async function openIncident(seq, trace){
   let data;
   try {
-    const r = await fetch("/api/incident?seq=" + encodeURIComponent(seq), {cache:"no-store"});
+    const r = await fetch("/api/incident?seq=" + encodeURIComponent(seq)
+      + (trace ? "&trace=" + encodeURIComponent(trace) : ""), {cache:"no-store"});
     if (!r.ok) return;
     data = await r.json();
   } catch(e){ return; }
+  displayWalk(data);
+}
+
+async function openWalk(source, trace){
+  let data;
+  try {
+    const r = await fetch("/api/walk?source=" + encodeURIComponent(source)
+      + "&trace=" + encodeURIComponent(trace), {cache:"no-store"});
+    if (!r.ok) return;
+    data = await r.json();
+  } catch(e){ return; }
+  displayWalk(data);
+}
+
+function displayWalk(data){
   incData = data;
   incIdx = data.steps.findIndex(s => s.is_anchor);
   if (incIdx < 0) incIdx = 0;
-  OVERVIEW_IDS.forEach(id => { const el = $(id); if (el) el.style.display = "none"; });
+  VIEW_IDS.forEach(id => { const el = $(id); if (el) el.style.display = "none"; });
   $("incident-view").style.display = "block";
   renderIncident();
   window.scrollTo(0, 0);
@@ -555,14 +771,15 @@ async function openIncident(seq){
 function closeIncident(){
   incData = null;
   $("incident-view").style.display = "none";
-  OVERVIEW_IDS.forEach(id => { const el = $(id); if (el) el.style.display = ""; });
-  // the pending banner's visibility is owned by render(); re-apply it
-  poll();
+  VIEW_IDS.forEach(id => { const el = $(id); if (el) el.style.display = ""; });
+  showView(currentView);
 }
 
 function renderIncident(){
   const inc = incData.incident, a = incData.anchor;
   $("inc-title").textContent = inc.title;
+  $("inc-why-h").firstChild.textContent =
+    (inc.kind === "run" ? "THE RUN — THE SHORT VERSION " : "WHY — THE SHORT ANSWER ");
   $("inc-meta").textContent = inc.source + " · " + inc.agent + " · anchored at #" + a.seq
     + " (" + a.type + ") · " + (a.ts || "") + " · trace " + incData.trace_id
     + " · window #" + inc.window.from_seq + "–#" + inc.window.to_seq
@@ -626,7 +843,6 @@ function renderStep(){
       + " — step-through paused here. This event does not recompute against the chain,"
       + " so later steps are not presented as trusted.";
   } else paused.style.display = "none";
-  // detail pane
   let diffHtml;
   if (cur.diff === null) diffHtml = '<div class="ln" style="color:var(--dim)">First step in the window — no previous step to diff against.</div>';
   else if (!cur.diff.length) diffHtml = '<div class="ln" style="color:var(--dim)">Payload identical to the previous step.</div>';
@@ -660,11 +876,301 @@ document.addEventListener("keydown", e => {
   else if (e.key === "Escape") closeIncident();
 });
 
-async function poll(){
-  try { const r = await fetch("/api/state", {cache:"no-store"}); render(await r.json()); }
-  catch(e){ $("livetxt").textContent = "SERVER UNREACHABLE"; $("live").className = "live"; }
+/* ---- tier 1: admin overview ---- */
+const STATUS_TONE = {blocked:"#e5534b", running:"#43b581", idle:"#49525f"};
+
+function renderOverview(ov){
+  updateChainPill(ov.chain);
+  $("nav-store").textContent = ov.store || "";
+
+  // needs attention FIRST: incidents + pending approvals, all traces
+  const parts = [];
+  (ov.incidents || []).forEach(i => parts.push(incidentRowHTML(i)));
+  (ov.pending_approvals || []).forEach(p => parts.push(
+    '<div class="att-pend"><span class="h">PENDING APPROVAL — DISPLAY ONLY.</span> #'
+    + p.seq + ' · ' + esc(p.source) + ' · ' + esc(p.what)
+    + (p.detail ? ' — ' + esc(p.detail) : '') + ' · since ' + hhmmss(p.ts) + '</div>'));
+  $("att-list").innerHTML = parts.length ? parts.join("")
+    : '<div class="empty-note">Nothing needs attention — no blocks, no rollbacks, '
+      + 'no pending approvals in this store. A boring overview is a healthy one.</div>';
+  bindIncidentRows($("att-list"));
+
+  // integrity strip: consistency, never provenance
+  const c = ov.chain, box = $("integrity");
+  box.className = c.status === "broken" ? "broken" : "";
+  box.id = "integrity";
+  if (c.status === "ok"){
+    $("int-main").innerHTML = '<span class="ok-t">✓ VERIFIED</span> · ' + c.count + ' events'
+      + (ov.head ? ' · head #' + ov.head.seq + ' · ' + esc(String(ov.head.hash).slice(0, 12)) + '…' : '');
+  } else if (c.status === "broken"){
+    $("int-main").innerHTML = '<span class="bad-t">✗ BROKEN @ SEQ ' + c.broken_seq + '</span> · '
+      + esc(c.detail || "");
+  } else {
+    $("int-main").textContent = c.status.toUpperCase() + (c.detail ? " · " + c.detail : "");
+  }
+
+  // system tiles — visible components, no blended score
+  $("ov-events").textContent = ov.events;
+  $("ov-prod").textContent = ov.producers_active ? "/ " + ov.producers_active + " producers" : "";
+  $("ov-traces").textContent = (ov.traces || []).length;
+  $("ov-dec").textContent = ov.decisions.total;
+  const b = ov.decisions.buckets;
+  $("ov-buckets").innerHTML = '<span style="color:var(--ok)">' + b.allow + '</span>'
+    + ' <small>·</small> <span style="color:var(--bad)">' + b.block + '</span>'
+    + ' <small>·</small> <span style="color:var(--orange)">' + b.rollback + '</span>'
+    + (b.other ? ' <small>· ' + b.other + ' other</small>' : '');
+  $("ov-cost").textContent = ov.cost.spans ? "$" + ov.cost.total_usd.toFixed(5) : "—";
+  $("ov-costsub").textContent = ov.cost.spans ? ov.cost.spans + " spans · " + ov.cost.billable_steps + " steps" : "";
+  if (ov.window && ov.window.first_ts){
+    const dur = Math.max(0, Math.round((new Date(ov.window.last_ts) - new Date(ov.window.first_ts)) / 1000));
+    $("ov-window").innerHTML = hhmmss(ov.window.first_ts) + " → " + hhmmss(ov.window.last_ts) + " <small>" + dur + "s</small>";
+  } else $("ov-window").textContent = "—";
+
+  // fleet table — one row per agent type
+  $("fleet-body").innerHTML = (ov.fleet || []).map(r =>
+    '<tr class="clickable" data-source="' + esc(r.source) + '">'
+    + '<td><span class="src">' + esc(r.source) + '</span><br>'
+    + '<span class="hl" style="color:' + ((TONES[r.tone] || {}).text || "#77808d") + '">■ ' + esc(r.headline) + '</span> '
+    + '<span class="sub">' + esc(trunc(r.detail, 44)) + '</span></td>'
+    + '<td class="num"><span class="stdot" style="background:' + (STATUS_TONE[r.status] || "#49525f") + '"></span>' + esc(r.status.toUpperCase()) + '</td>'
+    + '<td class="num">' + r.runs + '</td>'
+    + '<td class="num">' + r.events + '</td>'
+    + '<td>' + tallyHTML(r.decisions) + '</td>'
+    + '<td class="num">' + costHTML(r.cost_usd) + '</td>'
+    + '<td>' + sparkSVG(r.sparkline, (TONES[r.tone] || {}).stroke) + '</td>'
+    + '<td><span class="num">' + esc(r.last_type || "—") + '</span> <span class="sub">' + hhmmss(r.last_ts) + '</span><br>'
+    + '<span class="sub">' + esc(trunc(r.last_summary, 40)) + '</span></td></tr>'
+  ).join("");
+  Array.prototype.forEach.call(document.querySelectorAll("#fleet-body tr.clickable"), row => {
+    row.addEventListener("click", () => {
+      location.hash = "#/agent/" + encodeURIComponent(row.getAttribute("data-source"));
+    });
+  });
+
+  // decision feed — latest records, whole store
+  if ((ov.decision_feed || []).length){
+    $("ov-feed").innerHTML = ov.decision_feed.map(d =>
+      '<div class="feed-row"><span class="seq">#' + d.seq + '</span>'
+      + '<span class="src">' + esc(d.source) + '</span>'
+      + '<span class="ch ' + choiceClass(d.choice) + '">' + esc(String(d.choice).toUpperCase()) + '</span>'
+      + '<span class="sm">' + esc(d.decision_point) + (d.summary ? ' — ' + esc(d.summary) : '') + '</span></div>'
+    ).join("");
+  } else $("ov-feed").innerHTML = '<div class="empty-note">—</div>';
+
+  renderCostBars($("ov-costbars"), ov.cost_steps);
+  updateLive(ov.events);
 }
-poll(); setInterval(poll, 1000);
+
+async function loadOverview(){
+  try {
+    const r = await fetch("/api/overview", {cache:"no-store"});
+    renderOverview(await r.json());
+  } catch(e){ $("livetxt").textContent = "SERVER UNREACHABLE"; $("live").className = "live"; }
+}
+
+/* ---- tier 2: per-agent-type page ---- */
+let agSource = null, agFilters = {kind:null, type:null, trace:null, decisions:false}, agPaused = false;
+
+function resetAgFilters(){
+  agFilters = {kind:null, type:null, trace:null, decisions:false};
+  agPaused = false;
+}
+
+function renderAgent(ag){
+  updateChainPill(ag.chain);
+  $("ag-name").textContent = ag.source;
+  $("ag-role").textContent = ag.role || "";
+  $("ag-meta").innerHTML =
+    '<span class="stdot" style="background:' + (STATUS_TONE[ag.status] || "#49525f") + '"></span>'
+    + esc(ag.status.toUpperCase()) + ' · ' + esc(ag.headline || "")
+    + (ag.detail ? ' · ' + esc(ag.detail) : '')
+    + '<br>agent(s): ' + (ag.agents.length ? ag.agents.map(esc).join(", ") : "—")
+    + ' · event rate over its window '
+    + sparkSVG(ag.sparkline, (TONES[ag.tone] || {}).stroke || "#e8a33d");
+  $("ag-events").textContent = ag.events;
+  $("ag-runs-n").textContent = ag.runs.length;
+  $("ag-dec").textContent = ag.decisions.total;
+  const b = ag.decisions.buckets;
+  $("ag-decsub").textContent = "allow " + b.allow + " · block " + b.block
+    + " · rollback " + b.rollback + (b.other ? " · other " + b.other : "");
+  $("ag-cost").textContent = ag.cost.total_usd == null ? "—" : "$" + ag.cost.total_usd.toFixed(5);
+  $("ag-costsub").textContent = ag.cost.total_usd == null
+    ? "no ledger spans for this type" : ag.cost.spans + " spans · " + ag.cost.billable_steps + " steps";
+  if (ag.first_ts){
+    const dur = Math.max(0, Math.round((new Date(ag.last_ts) - new Date(ag.first_ts)) / 1000));
+    $("ag-window").innerHTML = hhmmss(ag.first_ts) + " → " + hhmmss(ag.last_ts) + " <small>" + dur + "s</small>";
+  } else $("ag-window").textContent = "—";
+
+  const pb = $("ag-pending");
+  if ((ag.pending || []).length){
+    pb.style.display = "block";
+    pb.innerHTML = '<span class="h">PENDING APPROVAL — DISPLAY ONLY.</span> '
+      + ag.pending.map(p => "#" + p.seq + " · " + esc(p.what)
+        + (p.detail ? " — " + esc(p.detail) : "")).join("<br>");
+  } else pb.style.display = "none";
+
+  // runs — proto-instances, labeled as runs
+  $("ag-runs-body").innerHTML = ag.runs.length ? ag.runs.map(r =>
+    '<tr><td class="num" title="' + esc(r.trace_id) + '">' + esc(trunc(r.trace_id, 26)) + '</td>'
+    + '<td class="num">' + r.events + '</td>'
+    + '<td>' + tallyHTML(r.decisions) + '</td>'
+    + '<td class="num">' + costHTML(r.cost_usd) + '</td>'
+    + '<td class="num">' + esc(r.outcome || "—") + '</td>'
+    + '<td class="num">' + hhmmss(r.first_ts) + ' → ' + hhmmss(r.last_ts)
+    + ' <span class="sub">#' + r.first_seq + '–#' + r.last_seq + '</span></td>'
+    + '<td><span class="walk-link" data-trace="' + esc(r.trace_id) + '">REPLAY THIS RUN →</span></td></tr>'
+  ).join("") : '<tr><td colspan="7" class="sub">No runs — this type has emitted no events.</td></tr>';
+  Array.prototype.forEach.call(document.querySelectorAll("#ag-runs-body .walk-link"), el => {
+    el.addEventListener("click", () => openWalk(agSource, el.getAttribute("data-trace")));
+  });
+
+  // decisions by choice, with bars
+  const byChoice = ag.decisions.by_choice || {};
+  const keys = Object.keys(byChoice).sort((x, y) => byChoice[y] - byChoice[x]);
+  if (keys.length){
+    const max = Math.max.apply(null, keys.map(k => byChoice[k])) || 1;
+    $("ag-choices").innerHTML = keys.map(k =>
+      '<div class="cost-row"><span>' + esc(k) + ' <span style="color:var(--faint)">('
+      + esc((ag.decisions.by_point && Object.keys(ag.decisions.by_point).length === 1)
+          ? Object.keys(ag.decisions.by_point)[0] : "all points") + ')</span></span><b>' + byChoice[k] + '</b></div>'
+      + '<div class="bar"><i style="width:' + Math.max(2, Math.round(byChoice[k] / max * 100)) + '%"></i></div>'
+    ).join("") + '<div class="sub" style="color:var(--faint);font-size:11px">tallies: '
+      + tallyHTML(ag.decisions.buckets) + '</div>';
+  } else $("ag-choices").innerHTML = '<div class="empty-note">No computed decision records from this type.</div>';
+
+  if ((ag.reasons || []).length){
+    $("ag-reasons").innerHTML = ag.reasons.map(r =>
+      '<div class="reason-row"><span>' + esc(r.label)
+      + (r.kind === "trigger" ? '<span class="tg">TRIGGER</span>' : '') + '</span>'
+      + '<span class="n">×' + r.count + '</span></div>'
+    ).join("");
+  } else $("ag-reasons").innerHTML = '<div class="empty-note">No reasons or triggers recorded.</div>';
+
+  if ((ag.outcomes || []).length){
+    $("ag-outcomes").innerHTML = ag.outcomes.map(o =>
+      '<div class="reason-row"><span>' + esc(o.label) + '</span><span class="n">×' + o.count + '</span></div>'
+    ).join("");
+  } else $("ag-outcomes").innerHTML = '<div class="empty-note">No run outcomes recorded.</div>';
+
+  renderFacets(ag);
+}
+
+function chipHTML(field, value, count, active){
+  return '<button type="button" class="chip' + (active ? " on" : "") + '" data-field="'
+    + field + '" data-value="' + esc(value == null ? "" : value) + '">'
+    + esc(value == null ? "all" : value) + ' <span class="n">' + count + '</span></button>';
+}
+
+function renderFacets(ag){
+  const f = ag.facets || {};
+  const total = ag.events;
+  const row = (label, field, counts, current) => {
+    let h = '<div class="facetrow"><span class="fl">' + label + '</span>'
+      + chipHTML(field, null, total, current == null);
+    Object.keys(counts || {}).sort((x, y) => counts[y] - counts[x]).forEach(v => {
+      h += chipHTML(field, v, counts[v], current === v);
+    });
+    return h + '</div>';
+  };
+  $("ag-facets").innerHTML =
+    row("KIND", "kind", f.kind, agFilters.kind)
+    + row("TYPE", "type", f.type, agFilters.type)
+    + row("TRACE", "trace", f.trace_id, agFilters.trace)
+    + '<div class="facetrow"><span class="fl">VIEW</span>'
+    + '<button type="button" class="chip' + (agFilters.decisions ? " on" : "") + '" id="ag-dec-toggle">DECISIONS ONLY</button>'
+    + '<button type="button" class="chip' + (agPaused ? " on" : "") + '" id="ag-pause">'
+    + (agPaused ? "❚❚ PAUSED" : "❚❚ PAUSE") + '</button></div>';
+  Array.prototype.forEach.call(document.querySelectorAll("#ag-facets .chip[data-field]"), chip => {
+    chip.addEventListener("click", () => {
+      const field = chip.getAttribute("data-field"), value = chip.getAttribute("data-value");
+      agFilters[field] = value === "" ? null : value;
+      loadAgent();
+    });
+  });
+  $("ag-dec-toggle").addEventListener("click", () => { agFilters.decisions = !agFilters.decisions; loadAgent(); });
+  $("ag-pause").addEventListener("click", () => {
+    agPaused = !agPaused;
+    $("ag-pause").className = "chip" + (agPaused ? " on" : "");
+    $("ag-pause").textContent = agPaused ? "❚❚ PAUSED" : "❚❚ PAUSE";
+    if (!agPaused) loadAgentEvents();
+  });
+}
+
+function renderAgentStream(payload){
+  $("ag-stream-sub").textContent = "— showing " + payload.shown + " of " + payload.total
+    + " · newest first" + (agPaused ? " · PAUSED" : "");
+  if (payload.events.length){
+    $("ag-stream").innerHTML = payload.events.map(e =>
+      '<div class="row' + (e.kind === "decision_record" ? " decision" : "") + '">'
+      + '<span class="seq">#' + e.seq + '</span><span class="ts">' + hhmmss(e.ts) + '</span>'
+      + '<span class="type">' + esc(e.type) + '</span>'
+      + '<span class="sum">' + esc(e.summary || e.kind) + '</span></div>'
+    ).join("");
+  } else $("ag-stream").innerHTML = '<div class="empty-note">No events match these facets.</div>';
+}
+
+async function loadAgentEvents(){
+  if (!agSource || agPaused) return;
+  const q = new URLSearchParams({source: agSource});
+  if (agFilters.kind) q.set("kind", agFilters.kind);
+  if (agFilters.type) q.set("type", agFilters.type);
+  if (agFilters.trace) q.set("trace", agFilters.trace);
+  if (agFilters.decisions) q.set("decisions", "1");
+  try {
+    const r = await fetch("/api/agent-events?" + q.toString(), {cache:"no-store"});
+    if (r.ok) renderAgentStream(await r.json());
+  } catch(e){ /* keep the last good stream on screen */ }
+}
+
+async function loadAgent(){
+  if (!agSource) return;
+  try {
+    const r = await fetch("/api/agent?source=" + encodeURIComponent(agSource), {cache:"no-store"});
+    if (!r.ok){ $("ag-name").textContent = agSource + " — not in this store"; return; }
+    renderAgent(await r.json());
+  } catch(e){ $("livetxt").textContent = "SERVER UNREACHABLE"; $("live").className = "live"; return; }
+  loadAgentEvents();
+}
+
+/* ---- routing + polling ---- */
+let currentView = "overview";
+
+function showView(name){
+  currentView = name;
+  ["overview", "topology", "agent"].forEach(v => {
+    $("view-" + v).style.display = v === name ? "" : "none";
+  });
+  $("nav-overview").className = name === "overview" ? "on" : "";
+  $("nav-topology").className = name === "topology" ? "on" : "";
+  $("nav-agent").textContent = name === "agent" && agSource ? "AGENT — " + agSource : "";
+  tick();
+}
+
+function route(){
+  if (incData) { incData = null; $("incident-view").style.display = "none"; }
+  const h = location.hash || "#/";
+  const m = h.match(/^#\/agent\/(.+)$/);
+  if (m){
+    const src = decodeURIComponent(m[1]);
+    if (src !== agSource){ agSource = src; resetAgFilters(); }
+    showView("agent");
+  } else if (h === "#/topology") showView("topology");
+  else showView("overview");
+}
+
+function tick(){
+  if (incData) return;  // step-through is a reading mode; don't churn under it
+  if (currentView === "overview") loadOverview();
+  else if (currentView === "topology") poll();
+  else if (currentView === "agent") loadAgent();
+}
+
+$("nav-overview").addEventListener("click", () => { location.hash = "#/"; });
+$("nav-topology").addEventListener("click", () => { location.hash = "#/topology"; });
+$("ag-back").addEventListener("click", () => { location.hash = "#/"; });
+window.addEventListener("hashchange", route);
+route();
+setInterval(tick, 1000);
 </script>
 </body>
 </html>

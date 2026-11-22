@@ -452,6 +452,331 @@ def incidents(events: list[dict], trace_id: str) -> list[dict]:
     return out
 
 
+# ---------------------------------------------------------------------
+# Dashboard slice 1 view-models: admin overview (Tier 1) and
+# per-agent-type pages (Tier 2). Like everything above, derived from
+# stored events alone. Two honesty rules are load-bearing here:
+#   * No blended health score. Status stays categorical, with its
+#     components visible (fleet_status's rule), because a confident
+#     number over an unauthenticated store manufactures assurance.
+#   * Cost is reported only where agent-ledger actually emitted
+#     spans; a source with no spans gets cost None -- never a
+#     borrowed fleet total, never a silent zero.
+# The store has no instance dimension (see design notes section 4):
+# Tier 2 groups a type's events by trace and calls those rows RUNS,
+# not instances.
+# ---------------------------------------------------------------------
+
+PRODUCER_ROLES = {
+    "agent-canary": "Promotion gate — compares a candidate agent version "
+                    "against the baseline on a golden suite; blocks regressions.",
+    "agent-gate": "Policy gateway — screens tool calls and results, enforces "
+                  "allow / deny / require-approval at the tool boundary.",
+    "blast-radius": "Change executor — plans infrastructure changes, runs them "
+                    "under approval, verifies, and rolls back on failure.",
+    "factory-floor-agent": "Grounded QA agent — answers over retrieved passages "
+                           "and checks every claim for groundedness before replying.",
+    "agent-ledger": "Cost ledger — OpenTelemetry spans attributing cost and "
+                    "latency to individual agent steps.",
+    "agent-chaos": "Chaos harness — injects faults into agent runs and measures "
+                   "silent-failure rates, defenses off vs on.",
+}
+
+_BLOCK_SET = {"BLOCK", "DENY", "DENIED"}
+_ROLLBACK_SET = {"ROLLBACK", "ROLLED_BACK"}
+SPARK_BUCKETS = 24
+
+
+def _choice_bucket(choice) -> str:
+    c = str(choice or "").upper()
+    if c in _BLOCK_SET:
+        return "block"
+    if c in _ROLLBACK_SET:
+        return "rollback"
+    if c == "ALLOW":
+        return "allow"
+    return "other"
+
+
+def decision_tallies(events: list[dict]) -> dict:
+    """Decision tallies over a set of events (one source's, or all).
+
+    Buckets are allow / block / rollback / other, over computed
+    decision records. blast-radius runs that finished rolled_back
+    count toward rollback too: the rollback there is an event, not a
+    decision record -- the same rule incidents() derives by.
+    """
+    by_choice: dict[str, int] = {}
+    by_point: dict[str, int] = {}
+    total = 0
+    for e in events:
+        if e["kind"] != "decision_record":
+            continue
+        p = e["payload"]
+        choice = str(p.get("choice") or "?")
+        by_choice[choice] = by_choice.get(choice, 0) + 1
+        point = p.get("decision_point") or e["type"]
+        by_point[point] = by_point.get(point, 0) + 1
+        total += 1
+    buckets = {"allow": 0, "block": 0, "rollback": 0, "other": 0}
+    for choice, n in by_choice.items():
+        buckets[_choice_bucket(choice)] += n
+    rollback_runs = sum(
+        1 for e in events
+        if e["source"] == "blast-radius" and e["type"] == "run_finished"
+        and (e["payload"].get("result") or "") == "rolled_back")
+    buckets["rollback"] += rollback_runs
+    return {"total": total, "by_choice": by_choice, "by_point": by_point,
+            "buckets": buckets, "rollback_runs": rollback_runs}
+
+
+def _reason_labels(event: dict) -> list[str]:
+    """Why-labels carried by one decision record's evidence."""
+    if event["kind"] != "decision_record":
+        return []
+    ev = event["payload"].get("evidence") or {}
+    labels = [str(r) for r in ev.get("reasons") or []]
+    if ev.get("reason"):
+        labels.append(str(ev["reason"]))
+    labels += [f"pattern: {p}" for p in ev.get("patterns") or []]
+    return labels
+
+
+def _trigger_labels(event: dict) -> list[str]:
+    """Failure / rollback-trigger labels from producer conventions."""
+    p, t = event["payload"], event["type"]
+    if event["source"] == "blast-radius":
+        if t == "verify_check" and p.get("result") == "FAIL":
+            return [f"verify check failed: {p.get('detail') or 'check'}"]
+        if t == "verify_failed":
+            return [("post-run verification failed: "
+                     f"{p.get('detail') or ''}").rstrip(": ")]
+        if t == "step_applied" and (p.get("result") or "ok") != "ok":
+            return [(f"step ended {p['result']}: "
+                     f"{p.get('detail') or ''}").rstrip(": ")]
+    if event["source"] == "agent-chaos" and t == "scenario_result" \
+            and p.get("fault_injected") and not p.get("detected"):
+        return [f"undetected fault: {p.get('scenario')}"
+                f" ({p.get('fault') or 'fault injected'})"]
+    return []
+
+
+def decision_reasons(events: list[dict], limit: int = 12) -> list[dict]:
+    """Decision reasons + failure triggers, counted, most frequent
+    first. Counts without reasons are useless; this is the reasons."""
+    counts: dict[str, dict] = {}
+    for e in events:
+        for label in _reason_labels(e):
+            row = counts.setdefault(label, {"label": label, "count": 0,
+                                            "kind": "reason"})
+            row["count"] += 1
+        for label in _trigger_labels(e):
+            row = counts.setdefault(label, {"label": label, "count": 0,
+                                            "kind": "trigger"})
+            row["count"] += 1
+    return sorted(counts.values(),
+                  key=lambda r: (-r["count"], r["label"]))[:limit]
+
+
+def outcome_tallies(events: list[dict]) -> list[dict]:
+    """Run/scenario outcome labels for one source's events, counted."""
+    counts: dict[str, int] = {}
+    for e in events:
+        p, t = e["payload"], e["type"]
+        label = None
+        if t in ("run_finished", "run_end"):
+            label = p.get("result") or p.get("outcome")
+        elif t == "outcome":
+            label = p.get("outcome")
+        elif t == "scenario_result":
+            label = p.get("outcome")
+        if label:
+            counts[str(label)] = counts.get(str(label), 0) + 1
+    return [{"label": k, "count": v} for k, v in
+            sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def _rate_buckets(events: list[dict], window: tuple | None = None,
+                  buckets: int = SPARK_BUCKETS) -> list[int]:
+    """Event counts per time bucket over a (start, end) window.
+
+    The window defaults to the events' own span; callers pass a
+    shared window so sparklines compare on one axis. Falls back to
+    position buckets when timestamps don't span (single instant)."""
+    if not events:
+        return [0] * buckets
+    if window is None:
+        tss = [t for t in (_parse_ts(e["ts"]) for e in events)
+               if t is not None]
+        window = (min(tss), max(tss)) if tss else (None, None)
+    start, end = window
+    out = [0] * buckets
+    if start is None or end is None or end <= start:
+        for i, _e in enumerate(events):
+            out[min(buckets - 1, i * buckets // len(events))] += 1
+        return out
+    span = end - start
+    for e in events:
+        t = _parse_ts(e["ts"])
+        if t is None:
+            continue
+        out[min(buckets - 1, int((t - start) / span * buckets))] += 1
+    return out
+
+
+def _time_window(events: list[dict]) -> tuple:
+    tss = [t for t in (_parse_ts(e["ts"]) for e in events) if t is not None]
+    return (min(tss), max(tss)) if tss else (None, None)
+
+
+def _run_rows(events: list[dict], source: str, mine: list[dict]) -> list[dict]:
+    """Per-trace runs of one source -- proto-instances, labeled runs.
+
+    The store has no instance field; one row is one trace's worth of
+    this source's events, NOT one process instance.
+    """
+    rows = []
+    for trace_id in dict.fromkeys(e["trace_id"] for e in mine):
+        run = [e for e in mine if e["trace_id"] == trace_id]
+        cs = cost_summary(run)
+        outcome = ""
+        for e in reversed(run):
+            if e["type"] in ("run_finished", "run_end", "outcome"):
+                outcome = str(e["payload"].get("result")
+                              or e["payload"].get("outcome") or "")
+                break
+        rows.append({
+            "trace_id": trace_id,
+            "events": len(run),
+            "first_seq": run[0]["seq"], "last_seq": run[-1]["seq"],
+            "first_ts": run[0]["ts"], "last_ts": run[-1]["ts"],
+            "decisions": decision_tallies(run)["buckets"],
+            "decisions_total": decision_tallies(run)["total"],
+            "cost_usd": cs["total_usd"] if cs["spans"] else None,
+            "outcome": outcome,
+            "last_summary": summarize_event(run[-1]),
+        })
+    rows.sort(key=lambda r: r["first_seq"])
+    return rows
+
+
+def fleet_table(events: list[dict], *, now: float) -> list[dict]:
+    """Tier 1 fleet table: one row per agent type, whole store.
+
+    Status is fleet_status's categorical rule (blocked > running >
+    idle) with its components beside it -- deliberately no blended
+    score. Sparklines share the store's time window so rows compare.
+    """
+    fleet = fleet_status(events, now=now)
+    pending = {p["source"] for p in pending_approvals(events)}
+    window = _time_window(events)
+    rows = []
+    for f in fleet:
+        source = f["source"]
+        mine = query_events(events, source=source)
+        cs = cost_summary(mine)
+        tallies = decision_tallies(mine)
+        if mine:
+            headline, detail, tone = _node_story(
+                source, mine, f["status"], source in pending)
+        else:
+            headline, detail, tone = "—", "no events yet", "idle"
+        rows.append({
+            "source": source, "agent": f["agent"], "status": f["status"],
+            "events": len(mine),
+            "runs": len({e["trace_id"] for e in mine}),
+            "traces": sorted({e["trace_id"] for e in mine}),
+            "decisions": tallies["buckets"],
+            "decisions_total": tallies["total"],
+            "cost_usd": cs["total_usd"] if cs["spans"] else None,
+            "cost_spans": cs["spans"],
+            "sparkline": _rate_buckets(mine, window=window),
+            "last_seq": f["last_seq"], "last_ts": f["last_ts"],
+            "last_type": f["last_type"], "last_summary": f["last_summary"],
+            "headline": headline, "detail": detail, "tone": tone,
+        })
+    return rows
+
+
+def all_incidents(events: list[dict]) -> list[dict]:
+    """Incidents across every trace in the store, in store order --
+    the overview's needs-attention strip."""
+    out: list[dict] = []
+    for trace_id in dict.fromkeys(e["trace_id"] for e in events):
+        out.extend(incidents(events, trace_id))
+    out.sort(key=lambda i: i["seq"])
+    return out
+
+
+def overview(events: list[dict], *, now: float) -> dict:
+    """Tier 1 admin overview payload, from the store alone."""
+    tallies = decision_tallies(events)
+    feed = [{
+        "seq": e["seq"], "ts": e["ts"], "source": e["source"],
+        "decision_point": e["payload"].get("decision_point") or e["type"],
+        "choice": e["payload"].get("choice") or "",
+        "summary": summarize_event(e),
+    } for e in events if e["kind"] == "decision_record"]
+    feed.sort(key=lambda d: -d["seq"])
+    first_ts = min((e["ts"] for e in events), default=None)
+    last_ts = max((e["ts"] for e in events), default=None)
+    return {
+        "events": len(events),
+        "traces": sorted({e["trace_id"] for e in events}),
+        "producers_active": len({e["source"] for e in events}),
+        "decisions": tallies,
+        "decision_feed": feed[:8],
+        "cost": cost_summary(events),
+        "cost_steps": cost_breakdown(events),
+        "pending_approvals": pending_approvals(events),
+        "window": {"first_ts": first_ts, "last_ts": last_ts},
+        "fleet": fleet_table(events, now=now),
+    }
+
+
+def source_summary(events: list[dict], source: str, *, now: float) -> dict | None:
+    """Tier 2 per-agent-type payload. None for a source that is
+    neither known nor present in the store."""
+    mine = query_events(events, source=source)
+    if not mine and source not in KNOWN_SOURCES:
+        return None
+    fleet = {f["source"]: f for f in fleet_status(events, now=now)}
+    f = fleet.get(source) or {"status": "idle"}
+    pending = {p["source"] for p in pending_approvals(events)}
+    if mine:
+        headline, detail, tone = _node_story(source, mine, f["status"],
+                                             source in pending)
+    else:
+        headline, detail, tone = "—", "no events yet", "idle"
+    cs = cost_summary(mine)
+    facets = {}
+    for field in ("kind", "type", "trace_id", "agent"):
+        counts: dict[str, int] = {}
+        for e in mine:
+            counts[e[field]] = counts.get(e[field], 0) + 1
+        facets[field] = counts
+    return {
+        "source": source,
+        "role": PRODUCER_ROLES.get(source, ""),
+        "agents": sorted({e["agent"] for e in mine}),
+        "status": f["status"],
+        "headline": headline, "detail": detail, "tone": tone,
+        "events": len(mine),
+        "first_ts": mine[0]["ts"] if mine else None,
+        "last_ts": mine[-1]["ts"] if mine else None,
+        "decisions": decision_tallies(mine),
+        "reasons": decision_reasons(mine),
+        "outcomes": outcome_tallies(mine),
+        "cost": {"spans": cs["spans"], "billable_steps": cs["billable_steps"],
+                 "total_usd": cs["total_usd"] if cs["spans"] else None},
+        "sparkline": _rate_buckets(mine),
+        "facets": facets,
+        "runs": _run_rows(events, source, mine),
+        "pending": [p for p in pending_approvals(events)
+                    if p["source"] == source],
+    }
+
+
 def cost_breakdown(events: list[dict], limit: int = 5) -> list[dict]:
     """Top billable ledger steps by cost, plus a remainder row.
 
