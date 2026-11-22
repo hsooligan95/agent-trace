@@ -244,6 +244,46 @@
   .diff-t .chg.changed{color:var(--amber)}
   .diff-t .bv{color:var(--dim)}
   .inc-note{color:var(--faint);font-size:11px;margin-top:9px}
+  /* replay (slice 2) */
+  #view-replay h1{font-size:19px;margin:0 0 2px;color:#eceff3;font-weight:700}
+  #view-replay h1 .sub{font-size:11px;color:var(--faint);letter-spacing:.04em;font-weight:400}
+  #rp-steps{max-height:520px;overflow:auto;border:1px solid var(--line);background:var(--panel)}
+  #rp-detail{min-width:0}
+  #rp-detail .dh{font-size:12.5px;color:#eceff3;margin-bottom:2px}
+  #rp-detail .dh .hv-ok{color:var(--ok)} #rp-detail .dh .hv-bad{color:var(--bad);font-weight:700}
+  #rp-detail .dsub{color:var(--dim);font-size:11.5px;margin-bottom:8px}
+  #rp-detail pre{background:var(--panel);border:1px solid var(--line);padding:9px 11px;
+                 overflow:auto;font-size:11.5px;line-height:1.45;margin:0;max-height:340px}
+  #rp-paused{display:none;border:1px solid var(--bad);background:#2a0f0e;color:#f0b6b2;
+             padding:8px 12px;margin-bottom:10px;font-size:12px}
+  .inc-controls select,.inc-controls input[type=number]{font-family:var(--mono);
+    background:var(--panel);color:var(--ink);border:1px solid var(--line2);
+    padding:4px 7px;font-size:12px;border-radius:2px;max-width:230px}
+  .inc-controls input[type=number]{width:76px}
+  .inc-controls label{color:var(--dim);font-size:10.5px;letter-spacing:.12em;
+    display:inline-flex;gap:6px;align-items:center}
+  .step-row .src{color:var(--amber);min-width:104px;overflow:hidden;text-overflow:ellipsis}
+  .step-row .ab{font-size:9px;font-weight:700;letter-spacing:.1em;padding:0 5px;
+    border:1px solid;white-space:nowrap}
+  .step-row .ab.block,.step-row .ab.failed-check{color:var(--bad);border-color:var(--bad)}
+  .step-row .ab.rollback{color:var(--orange);border-color:var(--orange)}
+  .step-row .ab.cost{color:var(--teal);border-color:var(--teal)}
+  .step-row .ab.silent-failure{color:var(--purple);border-color:var(--purple)}
+  #rp-rail{display:flex;gap:2px;flex-wrap:wrap;margin-top:10px}
+  .rp-tick{width:10px;height:22px;background:var(--line2);cursor:pointer;
+    border:none;padding:0;border-radius:1px}
+  .rp-tick:hover{background:var(--dim)}
+  .rp-tick.dec{background:#8a6a24}
+  .rp-tick.anom-block,.rp-tick.anom-failed-check{background:var(--bad)}
+  .rp-tick.anom-rollback{background:var(--orange)}
+  .rp-tick.anom-cost{background:var(--teal)}
+  .rp-tick.anom-silent-failure{background:var(--purple)}
+  .rp-tick.filtered{opacity:.16}
+  .rp-tick.sel{outline:2px solid var(--amber);outline-offset:1px;background:var(--amber)}
+  .cmp-row{display:flex;gap:10px;padding:3px 4px;font-size:12px;align-items:baseline}
+  .cmp-row .k{font-size:9.5px;font-weight:700;letter-spacing:.12em;color:var(--orange);
+    border:1px solid var(--orange);padding:0 6px;white-space:nowrap}
+  .cmp-row .d{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -258,6 +298,7 @@
 <nav id="viewnav">
   <button id="nav-overview" type="button">OVERVIEW</button>
   <button id="nav-topology" type="button">TOPOLOGY — FLEET GRAPH</button>
+  <button id="nav-replay" type="button">REPLAY</button>
   <span class="where" id="nav-agent"></span>
   <span class="store" id="nav-store"></span>
 </nav>
@@ -410,6 +451,62 @@
       <div id="ag-stream"><div class="empty-note">—</div></div>
     </section>
   </main>
+</div>
+
+<div id="view-replay" style="display:none">
+  <span class="inc-back" id="rp-back">← OVERVIEW</span>
+  <h1>REPLAY <span class="sub">— step through what the agents did, in any scope</span></h1>
+  <div class="inc-meta" id="rp-meta">—</div>
+
+  <section class="inc-block">
+    <h2>SCOPE <span class="sub">— one trace, whole or a seq window · the step list below is the replay; the rail is navigation only — no autoplay, no speed controls, by design</span></h2>
+    <div class="inc-controls">
+      <label>TRACE <select id="rp-trace"></select></label>
+      <label>FROM SEQ <input id="rp-from" type="number" min="1"></label>
+      <label>TO SEQ <input id="rp-to" type="number" min="1"></label>
+      <button id="rp-apply" type="button">APPLY SCOPE</button>
+      <button id="rp-full" type="button">WHOLE TRACE</button>
+    </div>
+    <div id="rp-sources"></div>
+    <div class="facetrow">
+      <span class="fl">VIEW</span>
+      <button type="button" class="chip" id="rp-dec-only">DECISIONS ONLY</button>
+      <span class="sub" id="rp-showing" style="color:var(--faint);font-size:11.5px"></span>
+    </div>
+    <div id="rp-rail"></div>
+    <div class="inc-note">Rail — one tick per step in scope: amber = decision record · red = block / failed check ·
+      orange = rollback · purple = silent failure · teal = cost-bearing step. Click a tick to go to that step.</div>
+  </section>
+
+  <section class="inc-block">
+    <h2>STEP-THROUGH <span class="sub">— store order · state and payload diff at every step</span></h2>
+    <div class="inc-controls">
+      <button id="rp-first" type="button">⏮ FIRST</button>
+      <button id="rp-prev" type="button">◀ PREV</button>
+      <span class="pos" id="rp-pos">—</span>
+      <button id="rp-next" type="button">NEXT ▶</button>
+      <button id="rp-jump-dec" type="button">⚑ NEXT DECISION</button>
+      <button id="rp-jump-anom" type="button">⚠ NEXT ANOMALY</button>
+      <span class="pos" id="rp-jump-note"></span>
+    </div>
+    <div id="rp-paused"></div>
+    <div class="inc-cols">
+      <div id="rp-steps"></div>
+      <div id="rp-detail"></div>
+    </div>
+    <div class="inc-note">✓ beside a step means that event's hash and chain linkage recompute
+      cleanly against the store copy served here — an internal consistency check on the
+      record, not proof of who wrote it.</div>
+  </section>
+
+  <section class="inc-block">
+    <h2>COMPARE TRACES <span class="sub">— TraceReplay diff: event classes, decision choices, cost. Timestamps, seq and hashes are identity, not behavior — excluded, so two honest re-runs of the same drill diff clean.</span></h2>
+    <div class="inc-controls">
+      <label>THIS TRACE AGAINST <select id="rp-cmp-trace"></select></label>
+      <button id="rp-cmp-go" type="button">COMPARE</button>
+    </div>
+    <div id="rp-cmp-out"><div class="empty-note">—</div></div>
+  </section>
 </div>
 
 <div id="incident-view">
@@ -734,7 +831,7 @@ function renderIncidents(st){
 }
 
 let incData = null, incIdx = 0;
-const VIEW_IDS = ["view-overview", "view-topology", "view-agent", "pagefoot"];
+const VIEW_IDS = ["view-overview", "view-topology", "view-agent", "view-replay", "pagefoot"];
 
 async function openIncident(seq, trace){
   let data;
@@ -874,6 +971,263 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight") selectStep(incIdx + 1);
   else if (e.key === "ArrowLeft") selectStep(incIdx - 1);
   else if (e.key === "Escape") closeIncident();
+});
+
+/* ---- slice 2: generalized replay — any trace, window, or agent scope ---- */
+let rpData = null, rpIdx = 0, rpHidden = new Set(), rpDecOnly = false;
+const ANOM_LABEL = {"block":"BLOCK", "rollback":"ROLLBACK",
+  "failed-check":"FAILED CHECK", "cost":"COST STEP",
+  "silent-failure":"SILENT FAILURE"};
+
+function rpVisible(){
+  if (!rpData) return [];
+  const out = [];
+  rpData.steps.forEach((s, i) => {
+    if (rpHidden.has(s.source)) return;
+    if (rpDecOnly && s.kind !== "decision_record") return;
+    out.push(i);
+  });
+  return out;
+}
+
+function rpBrokenIdx(){
+  if (!rpData || rpData.first_unverified_seq == null) return -1;
+  return rpData.steps.findIndex(s => s.seq === rpData.first_unverified_seq);
+}
+
+async function loadReplay(params){
+  const q = new URLSearchParams();
+  if (params.trace) q.set("trace", params.trace);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  let data;
+  try {
+    const r = await fetch("/api/replay?" + q.toString(), {cache:"no-store"});
+    if (!r.ok){ $("rp-meta").textContent = "No such trace in this store."; rpData = null; return; }
+    data = await r.json();
+  } catch(e){ $("livetxt").textContent = "SERVER UNREACHABLE"; $("live").className = "live"; return; }
+  rpData = data;
+  rpHidden = new Set();
+  if (params.source){
+    Object.keys(data.sources).forEach(s => { if (s !== params.source) rpHidden.add(s); });
+  }
+  rpDecOnly = false;
+  // Start on the first visible step -- or, arriving from a run, on
+  // the run's last visible step (its terminal event), which is not
+  // necessarily the trace's last step overall.
+  const vis0 = rpVisible();
+  rpIdx = vis0.length ? (params.run ? vis0[vis0.length - 1] : vis0[0]) : 0;
+  // scope controls reflect the loaded scope
+  $("rp-trace").innerHTML = data.traces.map(t =>
+    '<option value="' + esc(t) + '"' + (t === data.trace_id ? " selected" : "") + '>' + esc(t) + '</option>').join("");
+  $("rp-from").value = data.scope.from_seq;
+  $("rp-to").value = data.scope.to_seq;
+  $("rp-from").placeholder = data.scope.trace_from_seq;
+  $("rp-to").placeholder = data.scope.trace_to_seq;
+  const others = data.traces.filter(t => t !== data.trace_id);
+  $("rp-cmp-trace").innerHTML = others.length
+    ? others.map(t => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join("")
+    : '<option value="">— no other trace in this store —</option>';
+  $("rp-cmp-go").disabled = !others.length;
+  $("rp-cmp-out").innerHTML = others.length
+    ? '<div class="empty-note">Pick another trace and compare — divergences are listed plainly.</div>'
+    : '<div class="empty-note">This store holds one trace; compare needs two. (Verified against two generated drill stores — see the slice-2 tests.)</div>';
+  renderReplay();
+}
+
+function renderReplay(){
+  if (!rpData) return;
+  const d = rpData, sc = d.scope;
+  $("rp-meta").textContent = "trace " + d.trace_id + " · seq #" + sc.from_seq + "–#" + sc.to_seq
+    + " of #" + sc.trace_from_seq + "–#" + sc.trace_to_seq + " (" + sc.trace_events + " events in trace)"
+    + " · " + d.steps.length + " steps in scope";
+  // source lane chips — multi-select, counts are steps in scope
+  let chips = '<div class="facetrow"><span class="fl">LANES</span>';
+  Object.keys(d.sources).sort((a, b) => d.sources[b] - d.sources[a]).forEach(src => {
+    const on = !rpHidden.has(src);
+    chips += '<button type="button" class="chip' + (on ? " on" : "") + '" data-src="'
+      + esc(src) + '">' + esc(src) + ' <span class="n">' + d.sources[src] + '</span></button>';
+  });
+  $("rp-sources").innerHTML = chips + '</div>';
+  Array.prototype.forEach.call(document.querySelectorAll("#rp-sources .chip"), chip => {
+    chip.addEventListener("click", () => {
+      const src = chip.getAttribute("data-src");
+      if (rpHidden.has(src)) rpHidden.delete(src); else rpHidden.add(src);
+      rpFixSelection();
+      renderReplay();
+    });
+  });
+  $("rp-dec-only").className = "chip" + (rpDecOnly ? " on" : "");
+  const vis = rpVisible();
+  $("rp-showing").textContent = "showing " + vis.length + " of " + d.steps.length + " steps";
+  renderRpRail(vis);
+  renderRpStep(vis);
+}
+
+function renderRpRail(vis){
+  const visSet = new Set(vis);
+  $("rp-rail").innerHTML = rpData.steps.map((s, i) => {
+    let cls = "rp-tick";
+    if (s.anomaly) cls += " anom-" + s.anomaly;
+    else if (s.kind === "decision_record") cls += " dec";
+    if (!visSet.has(i)) cls += " filtered";
+    if (i === rpIdx) cls += " sel";
+    return '<button type="button" class="' + cls + '" data-i="' + i + '" title="#' + s.seq
+      + ' · ' + esc(s.source) + ' · ' + esc(s.type)
+      + (s.anomaly ? ' · ' + ANOM_LABEL[s.anomaly] : '') + '"></button>';
+  }).join("");
+  Array.prototype.forEach.call(document.querySelectorAll(".rp-tick"), tickEl => {
+    tickEl.addEventListener("click", () => selectRpStep(Number(tickEl.getAttribute("data-i"))));
+  });
+}
+
+function rpFixSelection(){
+  const vis = rpVisible();
+  if (!vis.length) return;
+  if (vis.indexOf(rpIdx) < 0){
+    const after = vis.find(i => i > rpIdx);
+    rpIdx = after != null ? after : vis[vis.length - 1];
+  }
+}
+
+function selectRpStep(i){
+  if (!rpData || !rpData.steps.length) return;
+  const b = rpBrokenIdx();
+  if (b >= 0 && i > b) i = b;  // step-through pauses at the first unverified step
+  rpIdx = Math.max(0, Math.min(i, rpData.steps.length - 1));
+  renderRpRail(rpVisible());
+  renderRpStep(rpVisible());
+}
+
+function renderRpStep(vis){
+  const d = rpData;
+  if (!d.steps.length){
+    $("rp-steps").innerHTML = '<div class="empty-note">No events in this seq window.</div>';
+    $("rp-detail").innerHTML = "";
+    $("rp-pos").textContent = "—";
+    return;
+  }
+  const cur = d.steps[rpIdx];
+  $("rp-steps").innerHTML = vis.map(i => {
+    const s = d.steps[i];
+    return '<div class="step-row' + (i === rpIdx ? " sel" : "") + '" data-i="' + i + '">'
+      + '<span class="sq">#' + s.seq + '</span>'
+      + '<span class="hv ' + (s.verified ? "ok" : "bad") + '" title="' + (s.verified ? "hash consistency: recomputes clean" : "hash consistency: FAILED") + '">' + (s.verified ? "✓" : "✗") + '</span>'
+      + '<span class="src">' + esc(s.source) + '</span>'
+      + '<span class="tp">' + esc(s.type) + '</span>'
+      + (s.anomaly ? '<span class="ab ' + esc(s.anomaly) + '">' + ANOM_LABEL[s.anomaly] + '</span>' : '')
+      + '<span class="sm">' + esc(s.summary || s.kind) + '</span></div>';
+  }).join("") || '<div class="empty-note">No steps match the lane / view filters.</div>';
+  Array.prototype.forEach.call(document.querySelectorAll("#rp-steps .step-row"), row => {
+    row.addEventListener("click", () => selectRpStep(Number(row.getAttribute("data-i"))));
+  });
+  const sel = document.querySelector("#rp-steps .step-row.sel");
+  if (sel) sel.scrollIntoView({block:"nearest"});
+  const posInVis = vis.indexOf(rpIdx);
+  $("rp-pos").textContent = "STEP " + (posInVis >= 0 ? (posInVis + 1) + " OF " + vis.length : "—")
+    + " · #" + cur.seq + " of " + d.steps.length + " in scope";
+  $("rp-prev").disabled = rpIdx <= 0;
+  $("rp-first").disabled = rpIdx <= 0;
+  $("rp-next").disabled = rpIdx >= d.steps.length - 1 || !cur.verified;
+  const paused = $("rp-paused");
+  if (!cur.verified){
+    paused.style.display = "block";
+    paused.textContent = "HASH CONSISTENCY CHECK FAILED AT SEQ " + cur.seq
+      + " — step-through paused here. This event does not recompute against the chain,"
+      + " so later steps are not presented as trusted.";
+  } else paused.style.display = "none";
+  let diffHtml;
+  if (cur.diff === null) diffHtml = '<div class="ln" style="color:var(--dim)">First step in scope — no previous step to diff against.</div>';
+  else if (!cur.diff.length) diffHtml = '<div class="ln" style="color:var(--dim)">Payload identical to the previous step.</div>';
+  else diffHtml = '<table class="diff-t">' + cur.diff.map(x =>
+    '<tr><td class="k">' + esc(x.key) + '</td><td class="chg ' + esc(x.change) + '">' + esc(x.change).toUpperCase() + '</td>'
+    + '<td class="bv">' + (x.before === null ? "—" : esc(x.before)) + '</td><td>→</td>'
+    + '<td>' + (x.after === null ? "—" : esc(x.after)) + '</td></tr>').join("") + '</table>';
+  $("rp-detail").innerHTML =
+    '<div class="dh">#' + cur.seq + ' · ' + esc(cur.type) + ' · ' + esc(cur.source)
+    + (cur.anomaly ? ' · <span class="ab ' + esc(cur.anomaly) + '" style="font-size:9px;font-weight:700;letter-spacing:.1em;padding:0 5px;border:1px solid">' + ANOM_LABEL[cur.anomaly] + '</span>' : '')
+    + ' · <span class="' + (cur.verified ? "hv-ok" : "hv-bad") + '">'
+    + (cur.verified ? "✓ hash consistency" : "✗ HASH CONSISTENCY FAILED") + '</span></div>'
+    + '<div class="dsub">' + hhmmss(cur.ts) + ' · ' + esc(cur.agent) + ' · kind ' + esc(cur.kind)
+    + (cur.summary ? ' · ' + esc(cur.summary) : '') + '</div>'
+    + '<h2>STATE AFTER THIS STEP <span class="sub">— TraceReplay state_at</span></h2>'
+    + stateBox("STATE AT #" + cur.seq, cur.state)
+    + '<h2 style="margin-top:10px">PAYLOAD</h2><pre>' + esc(JSON.stringify(cur.payload, null, 2)) + '</pre>'
+    + '<h2 style="margin-top:10px">DIFF VS PREVIOUS STEP</h2>' + diffHtml;
+}
+
+function rpJump(pred, what){
+  const vis = rpVisible();
+  const after = vis.filter(i => i > rpIdx && pred(rpData.steps[i]));
+  const before = vis.filter(i => pred(rpData.steps[i]));
+  const target = after.length ? after[0] : before[0];
+  if (target == null){ $("rp-jump-note").textContent = "no " + what + " in scope"; return; }
+  selectRpStep(target);
+  const s = rpData.steps[target];
+  $("rp-jump-note").textContent = "→ #" + s.seq + (s.anomaly ? " · " + ANOM_LABEL[s.anomaly] : " · " + s.type)
+    + (after.length ? "" : " · (wrapped)");
+}
+
+function rpHash(params){
+  const q = new URLSearchParams();
+  if (params.trace) q.set("trace", params.trace);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  if (params.source) q.set("source", params.source);
+  if (params.run) q.set("run", "1");
+  const s = q.toString();
+  return "#/replay" + (s ? "?" + s : "");
+}
+
+$("rp-back").addEventListener("click", () => { location.hash = "#/"; });
+$("rp-apply").addEventListener("click", () => {
+  location.hash = rpHash({trace: $("rp-trace").value,
+    from: $("rp-from").value, to: $("rp-to").value});
+});
+$("rp-full").addEventListener("click", () => {
+  location.hash = rpHash({trace: $("rp-trace").value});
+});
+$("rp-dec-only").addEventListener("click", () => {
+  rpDecOnly = !rpDecOnly; rpFixSelection(); renderReplay();
+});
+$("rp-first").addEventListener("click", () => selectRpStep(0));
+$("rp-prev").addEventListener("click", () => selectRpStep(rpIdx - 1));
+$("rp-next").addEventListener("click", () => selectRpStep(rpIdx + 1));
+$("rp-jump-dec").addEventListener("click", () =>
+  rpJump(s => s.kind === "decision_record", "decision records"));
+$("rp-jump-anom").addEventListener("click", () =>
+  rpJump(s => !!s.anomaly, "anomalies"));
+$("rp-cmp-go").addEventListener("click", async () => {
+  const other = $("rp-cmp-trace").value;
+  if (!other || !rpData) return;
+  const out = $("rp-cmp-out");
+  out.innerHTML = '<div class="empty-note">Comparing…</div>';
+  try {
+    const r = await fetch("/api/compare?trace_a=" + encodeURIComponent(rpData.trace_id)
+      + "&trace_b=" + encodeURIComponent(other), {cache:"no-store"});
+    if (!r.ok){ out.innerHTML = '<div class="empty-note">Compare unavailable for that pair.</div>'; return; }
+    const cmp = await r.json();
+    if (cmp.equal){
+      out.innerHTML = '<div class="cost-row"><span>' + esc(cmp.trace_a) + ' vs ' + esc(cmp.trace_b)
+        + '</span><b style="color:var(--ok)">NO DIVERGENCES</b></div>'
+        + '<div class="sub" style="color:var(--faint);font-size:11.5px">'
+        + cmp.events_a + ' vs ' + cmp.events_b + ' events — same event classes, same decisions, same cost. '
+        + 'Behaviorally identical re-runs.</div>';
+    } else {
+      out.innerHTML = '<div class="cost-row"><span>' + esc(cmp.trace_a) + ' vs ' + esc(cmp.trace_b)
+        + '</span><b style="color:var(--orange)">' + cmp.divergences.length + ' DIVERGENCE(S)</b></div>'
+        + cmp.divergences.map(x =>
+          '<div class="cmp-row"><span class="k">' + esc(x.kind.replace(/_/g, " ").toUpperCase()) + '</span>'
+          + '<span class="d">' + esc(x.detail) + '</span></div>').join("");
+    }
+  } catch(e){ out.innerHTML = '<div class="empty-note">Compare failed — server unreachable.</div>'; }
+});
+document.addEventListener("keydown", e => {
+  if (currentView !== "replay" || !rpData || incData) return;
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+  if (e.key === "ArrowRight") selectRpStep(rpIdx + 1);
+  else if (e.key === "ArrowLeft") selectRpStep(rpIdx - 1);
 });
 
 /* ---- tier 1: admin overview ---- */
@@ -1021,7 +1375,12 @@ function renderAgent(ag){
     + '<td><span class="walk-link" data-trace="' + esc(r.trace_id) + '">REPLAY THIS RUN →</span></td></tr>'
   ).join("") : '<tr><td colspan="7" class="sub">No runs — this type has emitted no events.</td></tr>';
   Array.prototype.forEach.call(document.querySelectorAll("#ag-runs-body .walk-link"), el => {
-    el.addEventListener("click", () => openWalk(agSource, el.getAttribute("data-trace")));
+    el.addEventListener("click", () => {
+      // Slice 2: a run opens in the generalized replay, scoped to
+      // this trace with only this type's lane on.
+      location.hash = rpHash({trace: el.getAttribute("data-trace"),
+                              source: agSource, run: true});
+    });
   });
 
   // decisions by choice, with bars
@@ -1137,11 +1496,12 @@ let currentView = "overview";
 
 function showView(name){
   currentView = name;
-  ["overview", "topology", "agent"].forEach(v => {
+  ["overview", "topology", "agent", "replay"].forEach(v => {
     $("view-" + v).style.display = v === name ? "" : "none";
   });
   $("nav-overview").className = name === "overview" ? "on" : "";
   $("nav-topology").className = name === "topology" ? "on" : "";
+  $("nav-replay").className = name === "replay" ? "on" : "";
   $("nav-agent").textContent = name === "agent" && agSource ? "AGENT — " + agSource : "";
   tick();
 }
@@ -1150,10 +1510,16 @@ function route(){
   if (incData) { incData = null; $("incident-view").style.display = "none"; }
   const h = location.hash || "#/";
   const m = h.match(/^#\/agent\/(.+)$/);
+  const rm = h.match(/^#\/replay(?:\?(.*))?$/);
   if (m){
     const src = decodeURIComponent(m[1]);
     if (src !== agSource){ agSource = src; resetAgFilters(); }
     showView("agent");
+  } else if (rm){
+    const p = new URLSearchParams(rm[1] || "");
+    showView("replay");
+    loadReplay({trace: p.get("trace"), from: p.get("from"), to: p.get("to"),
+                source: p.get("source"), run: p.get("run") === "1"});
   } else if (h === "#/topology") showView("topology");
   else showView("overview");
 }
@@ -1163,10 +1529,12 @@ function tick(){
   if (currentView === "overview") loadOverview();
   else if (currentView === "topology") poll();
   else if (currentView === "agent") loadAgent();
+  // replay is a reading mode too: no polling under a step-through.
 }
 
 $("nav-overview").addEventListener("click", () => { location.hash = "#/"; });
 $("nav-topology").addEventListener("click", () => { location.hash = "#/topology"; });
+$("nav-replay").addEventListener("click", () => { location.hash = "#/replay"; });
 $("ag-back").addEventListener("click", () => { location.hash = "#/"; });
 window.addEventListener("hashchange", route);
 route();

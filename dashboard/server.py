@@ -10,7 +10,11 @@ the same way: incidents from the query layer, per-step hash
 consistency recomputed from the chain, state before/after from
 TraceReplay. The slice-1 tier endpoints (/api/overview, /api/agent,
 /api/agent-events, /api/walk) are the same pattern -- query-layer
-derivations over the store, nothing else. The server holds no state
+derivations over the store, nothing else. Slice 2 adds the
+generalized replay (/api/replay: a step-through over any scope of a
+trace, per-step state from TraceReplay, anomaly classes from the
+query layer) and trace compare (/api/compare: TraceReplay's
+diff_traces over two traces of the store). The server holds no state
 of its own, opens no
 producer artifact, and rejects every non-GET request with 405: there
 is no approve / pause / kill / config surface here, by design.
@@ -25,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -400,6 +405,78 @@ def build_walk(path: Path, source: str,
     }
 
 
+def build_replay(path: Path, trace_id: str | None = None, *,
+                 from_seq: int | None = None,
+                 to_seq: int | None = None) -> dict | None:
+    """Generalized replay (slice 2): a step-through over any scope of
+    one trace -- the whole trace, or a seq window inside it. Every
+    step carries its payload, its diff vs the previous step *in
+    scope*, its per-event hash consistency, its anomaly class (query
+    layer), and the TraceReplay state immediately after it. Source
+    and decisions-only filtering are display concerns the client
+    applies over these steps -- the counts it needs ride along -- so
+    diffs and states never depend on what is filtered out of view.
+    None for an unknown trace; a window outside the trace is a
+    valid, empty replay."""
+    events = load_store_events(path)
+    if not events:
+        return None
+    traces = sorted({e["trace_id"] for e in events})
+    trace_id = trace_id or events[-1]["trace_id"]
+    mine = query_mod.query_events(events, trace_id=trace_id)
+    if not mine:
+        return None
+    lo = from_seq if from_seq is not None else mine[0]["seq"]
+    hi = to_seq if to_seq is not None else mine[-1]["seq"]
+    window = [e for e in mine if lo <= e["seq"] <= hi]
+    flags = chain_flags(events)
+    steps = []
+    prev_payload = None
+    for e in window:
+        steps.append({
+            "seq": e["seq"], "ts": e["ts"], "source": e["source"],
+            "agent": e["agent"], "type": e["type"], "kind": e["kind"],
+            "summary": query_mod.summarize_event(e),
+            "payload": e["payload"],
+            "diff": payload_diff(prev_payload, e["payload"]),
+            "verified": flags.get(e["seq"], False),
+            "anomaly": query_mod.anomaly_kind(e),
+            "state": _compact_state(replay_mod.state_at(
+                events, trace_id, upto_seq=e["seq"])),
+        })
+        prev_payload = e["payload"]
+    anomalies: dict[str, int] = {}
+    for s in steps:
+        if s["anomaly"]:
+            anomalies[s["anomaly"]] = anomalies.get(s["anomaly"], 0) + 1
+    return {
+        "trace_id": trace_id,
+        "traces": traces,
+        "scope": {"from_seq": lo, "to_seq": hi,
+                  "trace_from_seq": mine[0]["seq"],
+                  "trace_to_seq": mine[-1]["seq"],
+                  "trace_events": len(mine)},
+        "sources": dict(Counter(e["source"] for e in window)),
+        "anomalies": anomalies,
+        "steps": steps,
+        "first_unverified_seq": next(
+            (s["seq"] for s in steps if not s["verified"]), None),
+    }
+
+
+def build_compare(path: Path, trace_a: str, trace_b: str) -> dict | None:
+    """Trace compare (slice 2): TraceReplay's diff_traces over two
+    traces of the served store -- event classes, decision choices,
+    and cost. Timestamps, seq numbers, and hashes are identity, not
+    behavior, and the engine excludes them, so two honest re-runs of
+    the same drill diff clean. None when either trace is absent."""
+    events = load_store_events(path)
+    present = {e["trace_id"] for e in events}
+    if trace_a not in present or trace_b not in present:
+        return None
+    return replay_mod.diff_traces(events, trace_a, events, trace_b)
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     store_path: Path = Path("store.jsonl")
     protocol_version = "HTTP/1.1"
@@ -468,6 +545,34 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     self._json(404, {"error": "no such run"})
                 else:
                     self._json(200, walk)
+            elif parsed.path == "/api/replay":
+                qs = parse_qs(parsed.query)
+
+                def _int_or_none(name):
+                    raw = qs.get(name, [None])[0]
+                    try:
+                        return int(raw) if raw is not None else None
+                    except ValueError:
+                        return None
+
+                payload = build_replay(
+                    self.store_path, qs.get("trace", [None])[0],
+                    from_seq=_int_or_none("from"),
+                    to_seq=_int_or_none("to"))
+                if payload is None:
+                    self._json(404, {"error": "no such trace"})
+                else:
+                    self._json(200, payload)
+            elif parsed.path == "/api/compare":
+                qs = parse_qs(parsed.query)
+                trace_a = qs.get("trace_a", [""])[0]
+                trace_b = qs.get("trace_b", [""])[0]
+                payload = build_compare(self.store_path, trace_a, trace_b) \
+                    if trace_a and trace_b else None
+                if payload is None:
+                    self._json(404, {"error": "no such trace pair"})
+                else:
+                    self._json(200, payload)
             elif parsed.path == "/api/incidents":
                 self._json(200, build_incidents(self.store_path))
             elif parsed.path == "/api/incident":

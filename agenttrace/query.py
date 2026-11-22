@@ -530,6 +530,35 @@ def decision_tallies(events: list[dict]) -> dict:
             "buckets": buckets, "rollback_runs": rollback_runs}
 
 
+def anomaly_kind(event: dict) -> str | None:
+    """The anomaly class of one event, or None.
+
+    The replay's jump-to-anomaly vocabulary, from the producer
+    conventions already in the store: a computed decision that
+    stopped something (block / rollback), a blast-radius run that
+    ended rolled back, a failed verification check, a chaos fault
+    that was injected and went undetected, and a billable ledger
+    step (a step that cost money). Everything else returns None.
+    """
+    p, t = event["payload"], event["type"]
+    if event["kind"] == "decision_record":
+        bucket = _choice_bucket(p.get("choice"))
+        return bucket if bucket in ("block", "rollback") else None
+    if event["source"] == "blast-radius":
+        if t == "run_finished" and (p.get("result") or "") == "rolled_back":
+            return "rollback"
+        if t == "verify_failed" or (t == "verify_check"
+                                     and p.get("result") == "FAIL"):
+            return "failed-check"
+    if event["source"] == "agent-chaos" and t == "scenario_result" \
+            and p.get("fault_injected") and not p.get("detected"):
+        return "silent-failure"
+    if event["source"] == "agent-ledger" and t == "span" \
+            and p.get("attributes", {}).get("agentledger.kind") == "step":
+        return "cost"
+    return None
+
+
 def _reason_labels(event: dict) -> list[str]:
     """Why-labels carried by one decision record's evidence."""
     if event["kind"] != "decision_record":
