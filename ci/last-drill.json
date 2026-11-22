@@ -1,0 +1,47 @@
+{
+  "trace_id": "trace-drill-2f982e14",
+  "drill_date": "2026-11-22",
+  "generated_at": "2026-11-22T04:24:50+00:00",
+  "environment": "local-simulation",
+  "event_count": 117,
+  "chain_ok": true,
+  "chain_verdict": "Chain OK \u2014 117 events, every hash verified.",
+  "sources": {
+    "agent-canary": 2,
+    "agent-chaos": 13,
+    "agent-gate": 7,
+    "agent-ledger": 42,
+    "blast-radius": 46,
+    "factory-floor-agent": 7
+  },
+  "decision_records": [
+    {
+      "source": "agent-canary",
+      "choice": "BLOCK"
+    },
+    {
+      "source": "agent-gate",
+      "choice": "allow"
+    },
+    {
+      "source": "agent-gate",
+      "choice": "flagged"
+    },
+    {
+      "source": "factory-floor-agent",
+      "choice": "answered"
+    }
+  ],
+  "cost": {
+    "ledger_spans": 42,
+    "billable_steps": 31,
+    "total_usd": 0.57313,
+    "line": "42 spans \u00b7 31 billable steps \u00b7 total $0.57313"
+  },
+  "tamper_probe": {
+    "ran": true,
+    "flipped_seq": 8,
+    "detected": true,
+    "broken_seq": 8
+  }
+}
