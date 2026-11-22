@@ -1,0 +1,95 @@
+# Nightly platform drill -- the portfolio's central claim, re-proven
+# every night: fresh checkouts of all seven repos at main, the phase-2
+# drill run end to end, the hash chain re-verified cold from the
+# produced store, and the result committed back as ci/last-drill.json
+# + ci/last-drill-timeline.md (also uploaded as a run artifact).
+#
+# ACTIVATION NOTE: this file must be created through the GitHub web UI
+# (or any push with the Workflows permission). The fine-grained PAT
+# used to maintain these repos via the API lacks that permission --
+# that is the only step that cannot be API-driven. Once the file
+# exists, everything below runs under the workflow's own GITHUB_TOKEN.
+#
+# COMMIT-BACK, AND WHY IT CANNOT LOOP:
+#   * The commit-back step pushes with the workflow's GITHUB_TOKEN
+#     (permissions: contents: write below). That token belongs to the
+#     workflow run itself, so it CAN commit status files to this repo
+#     -- unlike the external maintenance PAT, which cannot push
+#     workflow files at all. The workflow file is the only piece that
+#     ever needed the web UI.
+#   * Pushes made with GITHUB_TOKEN do not trigger workflow runs
+#     (GitHub suppresses them by design); this workflow also has no
+#     push trigger -- schedule + manual dispatch only; the commit
+#     message carries [skip ci] as a third belt; and the concurrency
+#     group serializes runs. A status commit can never retrigger the
+#     drill.
+name: nightly-drill
+
+on:
+  schedule:
+    # Nightly, 06:23 UTC (off the top of the hour, when Actions queues jam).
+    - cron: "23 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write # for the status commit-back step only
+
+concurrency:
+  group: nightly-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    name: Platform drill across fresh checkouts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out agent-trace (this repo, with push credentials)
+        uses: actions/checkout@v4
+        with:
+          path: agent-trace
+
+      - name: Clone the six producer repos at main (public, anonymous read)
+        run: |
+          set -euo pipefail
+          for repo in agent-canary agent-gate blast-radius factory-floor-agent agent-ledger agent-chaos; do
+            git clone --depth 1 --branch main "https://github.com/hsooligan95/${repo}.git" "${repo}"
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node (agent-gate build + drill driver)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run the drill (installs deps, runs drill, re-verifies chain, writes status)
+        run: bash agent-trace/ci/run_drill_ci.sh
+
+      - name: Upload drill artifacts (store, timeline, full drill log, status)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drill-${{ github.run_id }}
+          path: |
+            agent-trace/drill/output/
+            agent-trace/ci/last-drill.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Commit the drill status back to the repo
+        run: |
+          set -euo pipefail
+          cd agent-trace
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci/last-drill.json ci/last-drill-timeline.md
+          if git diff --cached --quiet; then
+            echo "status files unchanged; nothing to commit"
+            exit 0
+          fi
+          git commit -m "nightly drill status [skip ci]"
+          git push
