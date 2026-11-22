@@ -267,6 +267,191 @@ def decision_records(events: list[dict], trace_id: str) -> list[dict]:
     return out
 
 
+# ---------------------------------------------------------------------
+# Incidents: the store's "needs attention" records -- computed decision
+# records whose choice stopped something (BLOCK / DENY), and
+# blast-radius runs that ended rolled back. Derived like everything
+# else here: from stored events alone, in store order. Each incident
+# names its anchor event (the decision / the run_finished) and the
+# causal window of events leading into it, with a plain-language
+# "why" assembled from the window's own records -- never narrated.
+# ---------------------------------------------------------------------
+
+_BLOCK_CHOICES = {"BLOCK", "DENY", "DENIED"}
+_ROLLBACK_CHOICES = {"ROLLBACK", "ROLLED_BACK"}
+
+
+def _window_cost(events: list[dict], from_seq: int, to_seq: int):
+    """Ledger cost attributable to a seq window, or None.
+
+    Cost exists only where agent-ledger emitted billable step spans;
+    a window containing no such span has no attributable cost and is
+    reported as None -- never as a borrowed fleet total.
+    """
+    steps = [e for e in query_events(events, source="agent-ledger")
+             if from_seq <= e["seq"] <= to_seq
+             and e["payload"].get("attributes", {}).get(
+                 "agentledger.kind") == "step"]
+    if not steps:
+        return None
+    return round(sum(float(e["payload"]["attributes"].get(
+        "agentledger.cost_usd", 0.0)) for e in steps), 5)
+
+
+def _decision_incident(events: list[dict], mine: list[dict],
+                       anchor: dict, kind: str) -> dict:
+    p = anchor["payload"]
+    # Causal window: the contiguous run of this producer's events in
+    # the trace ending at the decision record -- the computation and
+    # the record it produced.
+    from_seq = anchor["seq"]
+    for e in reversed(mine):
+        if e["seq"] > anchor["seq"]:
+            continue
+        if e["source"] != anchor["source"]:
+            break
+        from_seq = e["seq"]
+    evidence = p.get("evidence") or {}
+    why = [{
+        "seq": anchor["seq"],
+        "text": f"{p.get('decision_point') or anchor['type']}: "
+                f"{anchor['agent']} chose {p.get('choice')} "
+                f"(computed decision record, decider={p.get('decider')}).",
+    }]
+    for reason in evidence.get("reasons") or []:
+        why.append({"seq": anchor["seq"], "text": str(reason)})
+    cand = evidence.get("candidate_version")
+    if kind == "block" and cand:
+        title = f"{anchor['source']} blocked candidate {cand}"
+    else:
+        title = f"{anchor['source']} — {p.get('choice')}"
+    summary = "; ".join(w["text"] for w in why[1:]) or summarize_event(anchor)
+    return {
+        "id": f"incident-{anchor['seq']}",
+        "kind": kind,
+        "trace_id": anchor["trace_id"],
+        "source": anchor["source"],
+        "agent": anchor["agent"],
+        "seq": anchor["seq"],
+        "ts": anchor["ts"],
+        "title": title,
+        "summary": summary,
+        "window": {"from_seq": from_seq, "to_seq": anchor["seq"]},
+        "why": why,
+        "cost_usd": _window_cost(events, from_seq, anchor["seq"]),
+    }
+
+
+def _rollback_incident(events: list[dict], mine: list[dict],
+                       anchor: dict) -> dict:
+    p = anchor["payload"]
+    run_id = p.get("run_id")
+    br = [e for e in mine if e["source"] == "blast-radius"
+          and e["seq"] <= anchor["seq"]]
+    plan = next((e for e in br if e["type"] == "plan_created"
+                 and (run_id is None
+                      or e["payload"].get("run_id") == run_id)), None)
+    from_seq = plan["seq"] if plan else (br[0]["seq"] if br
+                                         else anchor["seq"])
+    window = [e for e in br if from_seq <= e["seq"] <= anchor["seq"]]
+    why: list[dict] = []
+    if plan:
+        why.append({"seq": plan["seq"], "text":
+                    f"Plan created: {plan['payload'].get('detail') or ''}"})
+    appr = next((e for e in window if e["type"] == "approval_granted"), None)
+    if appr:
+        why.append({"seq": appr["seq"], "text":
+                    f"Approved by "
+                    f"{appr['payload'].get('approved_by') or appr['agent']}."})
+    seam = _kill_seam(window)
+    if seam is not None:
+        key = _step_key(seam)
+        first = next(e for e in window if e["type"] == "step_started"
+                     and _step_key(e) == key)
+        why.append({"seq": seam["seq"], "text":
+                    f"Executor died mid-step (kill -9 seam): "
+                    f"'{seam['payload'].get('detail') or seam['payload'].get('action')}' "
+                    f"started at #{first['seq']} and again at #{seam['seq']} "
+                    f"-- the in-flight step was replayed on resume."})
+    for e in window:
+        if e["type"] == "step_applied" \
+                and (e["payload"].get("result") or "ok") != "ok":
+            why.append({"seq": e["seq"], "text":
+                        f"Step did not complete cleanly "
+                        f"({e['payload']['result']}): "
+                        f"{e['payload'].get('detail') or ''}"})
+    for e in window:
+        if e["type"] == "verify_check" \
+                and e["payload"].get("result") == "FAIL":
+            why.append({"seq": e["seq"], "text":
+                        f"Verification check failed: "
+                        f"{e['payload'].get('detail') or ''}"})
+    vf = next((e for e in window if e["type"] == "verify_failed"), None)
+    if vf is not None:
+        why.append({"seq": vf["seq"], "text":
+                    f"Post-run verification failed -- "
+                    f"{vf['payload'].get('detail') or ''}."})
+    rb = [e for e in window
+          if e["type"] in ("rollback_step", "rollback_step_skipped")]
+    if rb:
+        why.append({"seq": rb[0]["seq"], "text":
+                    f"Rolled back {len(rb)} step(s) in reverse order "
+                    f"(#{rb[0]['seq']}-#{rb[-1]['seq']}), undoing each "
+                    f"applied step and restoring the pre-run state."})
+    why.append({"seq": anchor["seq"], "text":
+                f"Run finished: rolled_back -- {p.get('detail') or ''}."})
+    bits = []
+    if seam is not None:
+        bits.append("executor killed mid-step (kill -9); "
+                    "the step was replayed on resume")
+    if vf is not None:
+        bits.append(f"post-run verification failed "
+                    f"({vf['payload'].get('detail') or 'see window'})")
+    if rb:
+        bits.append("every applied step was rolled back in reverse order")
+    return {
+        "id": f"incident-{anchor['seq']}",
+        "kind": "rollback",
+        "trace_id": anchor["trace_id"],
+        "source": anchor["source"],
+        "agent": anchor["agent"],
+        "seq": anchor["seq"],
+        "ts": anchor["ts"],
+        "title": "blast-radius rolled back its run",
+        "summary": "; ".join(bits) or summarize_event(anchor),
+        "window": {"from_seq": from_seq, "to_seq": anchor["seq"]},
+        "why": why,
+        "cost_usd": _window_cost(events, from_seq, anchor["seq"]),
+    }
+
+
+def incidents(events: list[dict], trace_id: str) -> list[dict]:
+    """Incidents in one trace, in store order.
+
+    Two derivations: (1) computed decision records whose choice is a
+    stop -- BLOCK / DENY (a block incident) or ROLLBACK; (2)
+    blast-radius runs whose run_finished result is rolled_back (the
+    rollback is an event there, not a decision record, so it is
+    derived from the run's own records).
+    """
+    mine = query_events(events, trace_id=trace_id)
+    out: list[dict] = []
+    for e in mine:
+        if e["kind"] != "decision_record":
+            continue
+        choice = str(e["payload"].get("choice") or "").upper()
+        if choice in _BLOCK_CHOICES:
+            out.append(_decision_incident(events, mine, e, "block"))
+        elif choice in _ROLLBACK_CHOICES:
+            out.append(_decision_incident(events, mine, e, "rollback"))
+    for e in mine:
+        if e["source"] == "blast-radius" and e["type"] == "run_finished" \
+                and (e["payload"].get("result") or "") == "rolled_back":
+            out.append(_rollback_incident(events, mine, e))
+    out.sort(key=lambda i: i["seq"])
+    return out
+
+
 def cost_breakdown(events: list[dict], limit: int = 5) -> list[dict]:
     """Top billable ledger steps by cost, plus a remainder row.
 

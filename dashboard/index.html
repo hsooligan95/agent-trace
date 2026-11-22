@@ -113,6 +113,74 @@
   .empty-note{color:var(--faint);padding:8px 4px}
   footer{margin-top:14px;color:var(--faint);font-size:11px;letter-spacing:.05em;
          border-top:1px solid var(--line);padding-top:8px}
+  /* incidents (prototype: incident-first entry path) */
+  #incidents-panel{margin-top:12px}
+  .inc-row{display:flex;gap:10px;align-items:baseline;padding:7px 9px;cursor:pointer;
+           border:1px solid var(--line);margin-bottom:7px;background:var(--panel)}
+  .inc-row:hover{border-color:var(--line2);background:#12161d}
+  .inc-row .kind{font-size:10px;font-weight:700;letter-spacing:.14em;padding:2px 8px;
+                 border:1px solid;white-space:nowrap}
+  .inc-row .kind.block{color:var(--bad);border-color:var(--bad)}
+  .inc-row .kind.rollback{color:var(--orange);border-color:var(--orange)}
+  .inc-row .ttl{color:#eceff3;font-weight:600}
+  .inc-row .meta{color:var(--faint);font-size:11px;white-space:nowrap}
+  .inc-row .sum{color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .inc-row .open{color:var(--amber);font-size:11px;white-space:nowrap}
+  /* incident view */
+  #incident-view{display:none}
+  .inc-back{color:var(--amber);cursor:pointer;font-size:12px;letter-spacing:.1em;
+            margin:6px 0 10px;display:inline-block}
+  .inc-back:hover{text-decoration:underline}
+  #incident-view h1{font-size:19px;margin:0 0 2px;color:#eceff3;font-weight:700}
+  .inc-meta{color:var(--dim);font-size:12px;margin-bottom:12px}
+  .inc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  @media (max-width:900px){.inc-cols{grid-template-columns:1fr}}
+  .inc-block{background:var(--panel2);border:1px solid var(--line);padding:11px 13px;
+             min-width:0;margin-bottom:12px}
+  .inc-block pre{background:var(--panel);border:1px solid var(--line);padding:9px 11px;
+                 overflow:auto;font-size:11.5px;line-height:1.45;margin:0;max-height:340px}
+  #inc-why{margin:0;padding-left:20px}
+  #inc-why li{margin:3px 0;color:var(--ink)}
+  #inc-why .sq{color:var(--faint);font-size:11px;margin-right:6px}
+  .inc-states{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .state-box{border:1px solid var(--line);background:var(--panel);padding:8px 11px}
+  .state-box .h{font-size:10px;letter-spacing:.2em;color:var(--dim);margin-bottom:4px}
+  .state-box .big{font-size:15px;color:#eceff3;font-weight:600}
+  .state-box .ln{color:var(--dim);font-size:11.5px}
+  .state-box .ln b{color:var(--ink);font-weight:600}
+  .inc-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .inc-controls button{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;
+    background:var(--panel);color:var(--ink);border:1px solid var(--line2);
+    padding:5px 12px;cursor:pointer;border-radius:2px}
+  .inc-controls button:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}
+  .inc-controls button:disabled{opacity:.38;cursor:default}
+  .inc-controls .pos{color:var(--dim);font-size:12px;margin:0 4px}
+  #inc-paused{display:none;border:1px solid var(--bad);background:#2a0f0e;color:#f0b6b2;
+              padding:8px 12px;margin-bottom:10px;font-size:12px}
+  .step-row{display:flex;gap:8px;padding:3px 7px;cursor:pointer;font-size:12px;
+            white-space:nowrap;overflow:hidden;border-left:2px solid transparent}
+  .step-row:hover{background:#12161d}
+  .step-row.sel{background:#171c26;border-left-color:var(--amber)}
+  .step-row .sq{color:var(--faint);min-width:36px;text-align:right}
+  .step-row .hv{width:14px;text-align:center}
+  .step-row .hv.ok{color:var(--ok)} .step-row .hv.bad{color:var(--bad);font-weight:700}
+  .step-row .tp{color:var(--blue);min-width:118px;overflow:hidden;text-overflow:ellipsis}
+  .step-row.anchor .tp{color:var(--amber);font-weight:700}
+  .step-row .sm{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+  #inc-steps{max-height:520px;overflow:auto;border:1px solid var(--line);background:var(--panel)}
+  #inc-detail{min-width:0}
+  #inc-detail .dh{font-size:12.5px;color:#eceff3;margin-bottom:2px}
+  #inc-detail .dh .hv-ok{color:var(--ok)} #inc-detail .dh .hv-bad{color:var(--bad);font-weight:700}
+  #inc-detail .dsub{color:var(--dim);font-size:11.5px;margin-bottom:8px}
+  .diff-t{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
+  .diff-t td{border-top:1px solid var(--line);padding:3px 6px;vertical-align:top;
+             word-break:break-word}
+  .diff-t .k{color:var(--blue);white-space:nowrap}
+  .diff-t .chg{white-space:nowrap;font-weight:700}
+  .diff-t .chg.added{color:var(--ok)} .diff-t .chg.removed{color:var(--bad)}
+  .diff-t .chg.changed{color:var(--amber)}
+  .diff-t .bv{color:var(--dim)}
+  .inc-note{color:var(--faint);font-size:11px;margin-top:9px}
 </style>
 </head>
 <body>
@@ -124,7 +192,7 @@
   <span class="pill" id="chain">CHAIN —</span>
 </header>
 
-<div class="stats">
+<div class="stats" id="statsbar">
   <div class="stat"><span class="k">ACTIVE TRACE</span><span class="v" id="trace">—</span></div>
   <div class="stat"><span class="k">EVENTS</span><span class="v"><span id="count">0</span> <small id="producers"></small></span></div>
   <div class="stat"><span class="k">DECISION RECORDS</span><span class="v"><span id="decn">0</span> <small>computed</small></span></div>
@@ -138,7 +206,7 @@
   <div id="pendinglist"></div>
 </div>
 
-<div class="diagram">
+<div class="diagram" id="diagram">
   <svg id="graph" viewBox="0 0 1380 600" role="img"
        aria-label="Fleet graph: six agents emitting into the AgentTrace store"></svg>
   <div class="legend">
@@ -148,12 +216,17 @@
   </div>
 </div>
 
-<div class="ribbon">
+<div class="ribbon" id="ribbon">
   <h2>TRACE RIBBON <span class="sub" id="ribbonsub"></span></h2>
   <div class="track"><div class="axis"></div><div id="beats"></div></div>
 </div>
 
-<main>
+<section id="incidents-panel">
+  <h2>INCIDENTS <span class="sub">— blocks &amp; rollbacks, derived from the store · click one to walk its causal window</span></h2>
+  <div id="incidents"><div class="empty-note">—</div></div>
+</section>
+
+<main id="mainwrap">
   <section>
     <h2>SPAN TREE / TIMELINE <span class="sub" id="treesub"></span></h2>
     <div id="tree"><div class="empty-note">No events yet — waiting for a run to write to the store.</div></div>
@@ -174,7 +247,48 @@
   </div>
 </main>
 
-<footer>READ-ONLY VIEW — every element on this page, the graph included, is rendered from
+<div id="incident-view">
+  <span class="inc-back" id="inc-back">← BACK TO OVERVIEW</span>
+  <h1 id="inc-title">—</h1>
+  <div class="inc-meta" id="inc-meta"></div>
+
+  <section class="inc-block">
+    <h2>WHY — THE SHORT ANSWER <span class="sub">— assembled from the window's own records</span></h2>
+    <ol id="inc-why"></ol>
+  </section>
+
+  <div class="inc-cols">
+    <section class="inc-block">
+      <h2 id="inc-anchor-h">THE RECORD</h2>
+      <pre id="inc-anchor"></pre>
+    </section>
+    <section class="inc-block">
+      <h2>STATE — BEFORE / AFTER <span class="sub">— TraceReplay reconstruction at the anchor</span></h2>
+      <div class="inc-states" id="inc-states"></div>
+    </section>
+  </div>
+
+  <section class="inc-block">
+    <h2>STEP-THROUGH — THE CAUSAL WINDOW <span class="sub">— store order · step, don't autoplay</span></h2>
+    <div class="inc-controls">
+      <button id="inc-first" type="button">⏮ FIRST</button>
+      <button id="inc-prev" type="button">◀ PREV</button>
+      <span class="pos" id="inc-pos">—</span>
+      <button id="inc-next" type="button">NEXT ▶</button>
+      <button id="inc-jump" type="button">⚑ JUMP TO DECISION</button>
+    </div>
+    <div id="inc-paused"></div>
+    <div class="inc-cols">
+      <div id="inc-steps"></div>
+      <div id="inc-detail"></div>
+    </div>
+    <div class="inc-note">✓ beside a step means that event's hash and chain linkage recompute
+      cleanly against the store copy served here — an internal consistency check on the
+      record, not proof of who wrote it.</div>
+  </section>
+</div>
+
+<footer id="pagefoot">READ-ONLY VIEW — every element on this page, the graph included, is rendered from
   chained events in the AgentTrace store, through the same query layer as the CLI.
   This page has no controls, no accounts, and no state of its own, by design.</footer>
 
@@ -335,6 +449,7 @@ function render(st){
 
   renderGraph(st);
   renderRibbon(st);
+  renderIncidents(st);
 
   // span tree / timeline
   const brokenSeq = (c.status === "broken") ? c.broken_seq : null;
@@ -396,6 +511,154 @@ function render(st){
     live.className = "live"; $("livetxt").textContent = st.events ? "TAILING — NO NEW EVENTS" : "TAILING — STORE EMPTY";
   }
 }
+
+/* ---- incidents (prototype) ---- */
+function renderIncidents(st){
+  const list = st.incidents || [];
+  if (!list.length){
+    $("incidents").innerHTML = '<div class="empty-note">No block or rollback incidents in this trace.</div>';
+    return;
+  }
+  $("incidents").innerHTML = list.map(i =>
+    '<div class="inc-row" data-seq="' + i.seq + '">'
+    + '<span class="kind ' + esc(i.kind) + '">' + (i.kind === "block" ? "BLOCK" : "ROLLED BACK") + '</span>'
+    + '<span class="ttl">' + esc(i.title) + '</span>'
+    + '<span class="sum">' + esc(i.summary) + '</span>'
+    + '<span class="meta">' + esc(i.source) + ' · #' + i.seq + ' · ' + hhmmss(i.ts)
+    + (i.cost_usd != null ? ' · $' + i.cost_usd.toFixed(5) : '') + '</span>'
+    + '<span class="open">WALK IT →</span></div>'
+  ).join("");
+  Array.prototype.forEach.call(document.querySelectorAll(".inc-row"), row => {
+    row.addEventListener("click", () => openIncident(row.getAttribute("data-seq")));
+  });
+}
+
+let incData = null, incIdx = 0;
+const OVERVIEW_IDS = ["statsbar", "pending", "diagram", "ribbon", "incidents-panel", "mainwrap", "pagefoot"];
+
+async function openIncident(seq){
+  let data;
+  try {
+    const r = await fetch("/api/incident?seq=" + encodeURIComponent(seq), {cache:"no-store"});
+    if (!r.ok) return;
+    data = await r.json();
+  } catch(e){ return; }
+  incData = data;
+  incIdx = data.steps.findIndex(s => s.is_anchor);
+  if (incIdx < 0) incIdx = 0;
+  OVERVIEW_IDS.forEach(id => { const el = $(id); if (el) el.style.display = "none"; });
+  $("incident-view").style.display = "block";
+  renderIncident();
+  window.scrollTo(0, 0);
+}
+
+function closeIncident(){
+  incData = null;
+  $("incident-view").style.display = "none";
+  OVERVIEW_IDS.forEach(id => { const el = $(id); if (el) el.style.display = ""; });
+  // the pending banner's visibility is owned by render(); re-apply it
+  poll();
+}
+
+function renderIncident(){
+  const inc = incData.incident, a = incData.anchor;
+  $("inc-title").textContent = inc.title;
+  $("inc-meta").textContent = inc.source + " · " + inc.agent + " · anchored at #" + a.seq
+    + " (" + a.type + ") · " + (a.ts || "") + " · trace " + incData.trace_id
+    + " · window #" + inc.window.from_seq + "–#" + inc.window.to_seq
+    + (inc.cost_usd != null ? " · attributable cost $" + inc.cost_usd.toFixed(5) : "");
+  $("inc-why").innerHTML = inc.why.map(w =>
+    '<li><span class="sq">#' + w.seq + '</span>' + esc(w.text) + '</li>').join("");
+  $("inc-anchor-h").textContent = a.kind === "decision_record"
+    ? "THE DECISION RECORD — COMPUTED, NEVER NARRATED" : "THE ANCHOR RECORD — " + a.type.toUpperCase();
+  $("inc-anchor").textContent = JSON.stringify(a.payload, null, 2);
+  $("inc-states").innerHTML = stateBox("BEFORE — state at #" + (a.seq - 1), incData.state_before)
+    + stateBox("AFTER — state at #" + a.seq, incData.state_after);
+  renderStep();
+}
+
+function stateBox(label, s){
+  const dec = (s.decisions || []).map(d =>
+    esc(d.decision_point) + " → <b>" + esc(d.choice) + "</b>").join("<br>") || "none yet";
+  const src = Object.keys(s.sources || {}).map(k =>
+    esc(k) + " <b>" + s.sources[k] + "</b>").join(" · ") || "—";
+  return '<div class="state-box"><div class="h">' + esc(label) + '</div>'
+    + '<div class="big">' + s.events + ' events</div>'
+    + '<div class="ln">cost so far <b>$' + Number(s.cost_usd || 0).toFixed(5) + '</b></div>'
+    + '<div class="ln">' + src + '</div>'
+    + '<div class="ln">decisions so far:<br>' + dec + '</div></div>';
+}
+
+function brokenIdx(){
+  if (!incData || incData.first_unverified_seq == null) return -1;
+  return incData.steps.findIndex(s => s.seq === incData.first_unverified_seq);
+}
+
+function selectStep(i){
+  const b = brokenIdx();
+  if (b >= 0 && i > b) i = b;  // step-through pauses at the first unverified step
+  incIdx = Math.max(0, Math.min(i, incData.steps.length - 1));
+  renderStep();
+}
+
+function renderStep(){
+  const steps = incData.steps, cur = steps[incIdx], b = brokenIdx();
+  $("inc-steps").innerHTML = steps.map((s, i) =>
+    '<div class="step-row' + (i === incIdx ? " sel" : "") + (s.is_anchor ? " anchor" : "") + '" data-i="' + i + '">'
+    + '<span class="sq">#' + s.seq + '</span>'
+    + '<span class="hv ' + (s.verified ? "ok" : "bad") + '" title="' + (s.verified ? "hash consistency: recomputes clean" : "hash consistency: FAILED") + '">' + (s.verified ? "✓" : "✗") + '</span>'
+    + '<span class="tp">' + esc(s.type) + '</span>'
+    + '<span class="sm">' + esc(s.summary || s.source) + '</span></div>'
+  ).join("");
+  Array.prototype.forEach.call(document.querySelectorAll(".step-row"), row => {
+    row.addEventListener("click", () => selectStep(Number(row.getAttribute("data-i"))));
+  });
+  const sel = document.querySelector(".step-row.sel");
+  if (sel) sel.scrollIntoView({block:"nearest"});
+  $("inc-pos").textContent = "STEP " + (incIdx + 1) + " OF " + steps.length + " — #" + cur.seq;
+  $("inc-prev").disabled = incIdx <= 0;
+  $("inc-first").disabled = incIdx <= 0;
+  $("inc-next").disabled = incIdx >= steps.length - 1 || !cur.verified;
+  const paused = $("inc-paused");
+  if (!cur.verified){
+    paused.style.display = "block";
+    paused.textContent = "HASH CONSISTENCY CHECK FAILED AT SEQ " + cur.seq
+      + " — step-through paused here. This event does not recompute against the chain,"
+      + " so later steps are not presented as trusted.";
+  } else paused.style.display = "none";
+  // detail pane
+  let diffHtml;
+  if (cur.diff === null) diffHtml = '<div class="ln" style="color:var(--dim)">First step in the window — no previous step to diff against.</div>';
+  else if (!cur.diff.length) diffHtml = '<div class="ln" style="color:var(--dim)">Payload identical to the previous step.</div>';
+  else diffHtml = '<table class="diff-t">' + cur.diff.map(d =>
+    '<tr><td class="k">' + esc(d.key) + '</td><td class="chg ' + esc(d.change) + '">' + esc(d.change).toUpperCase() + '</td>'
+    + '<td class="bv">' + (d.before === null ? "—" : esc(d.before)) + '</td><td>→</td>'
+    + '<td>' + (d.after === null ? "—" : esc(d.after)) + '</td></tr>').join("") + '</table>';
+  $("inc-detail").innerHTML =
+    '<div class="dh">#' + cur.seq + ' · ' + esc(cur.type) + ' · ' + esc(cur.source)
+    + (cur.is_anchor ? ' · <span style="color:var(--amber)">⚑ THE DECISION</span>' : '')
+    + ' · <span class="' + (cur.verified ? "hv-ok" : "hv-bad") + '">'
+    + (cur.verified ? "✓ hash consistency" : "✗ HASH CONSISTENCY FAILED") + '</span></div>'
+    + '<div class="dsub">' + hhmmss(cur.ts) + ' · ' + esc(cur.agent) + ' · kind ' + esc(cur.kind)
+    + (cur.summary ? ' · ' + esc(cur.summary) : '') + '</div>'
+    + '<h2>PAYLOAD</h2><pre>' + esc(JSON.stringify(cur.payload, null, 2)) + '</pre>'
+    + '<h2 style="margin-top:10px">DIFF VS PREVIOUS STEP</h2>' + diffHtml;
+}
+
+$("inc-back").addEventListener("click", closeIncident);
+$("inc-first").addEventListener("click", () => selectStep(0));
+$("inc-prev").addEventListener("click", () => selectStep(incIdx - 1));
+$("inc-next").addEventListener("click", () => selectStep(incIdx + 1));
+$("inc-jump").addEventListener("click", () => {
+  const i = incData.steps.findIndex(s => s.is_anchor);
+  if (i >= 0) selectStep(i);
+});
+document.addEventListener("keydown", e => {
+  if (!incData || $("incident-view").style.display === "none") return;
+  if (e.key === "ArrowRight") selectStep(incIdx + 1);
+  else if (e.key === "ArrowLeft") selectStep(incIdx - 1);
+  else if (e.key === "Escape") closeIncident();
+});
 
 async function poll(){
   try { const r = await fetch("/api/state", {cache:"no-store"}); render(await r.json()); }
