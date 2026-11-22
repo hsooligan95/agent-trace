@@ -8,10 +8,25 @@ from __future__ import annotations
 import re
 
 
+def event_instance(event: dict) -> str:
+    """The producing process instance of one event.
+
+    The optional top-level ``instance`` field when the producer
+    declared one; otherwise the event's ``agent`` value -- the
+    pre-instance behavior, so stores written before the field
+    existed group exactly as they always did (one implicit instance
+    per actor name).
+    """
+    return event.get("instance") or event["agent"]
+
+
 def query_events(events: list[dict], *, trace_id: str | None = None,
                  agent: str | None = None, source: str | None = None,
-                 type: str | None = None, kind: str | None = None) -> list[dict]:
-    """Filter events by any combination of trace ID, agent, source, type, kind."""
+                 type: str | None = None, kind: str | None = None,
+                 instance: str | None = None) -> list[dict]:
+    """Filter events by any combination of trace ID, agent, source,
+    type, kind, instance (the effective instance -- see
+    event_instance)."""
     out = events
     if trace_id is not None:
         out = [e for e in out if e["trace_id"] == trace_id]
@@ -23,6 +38,8 @@ def query_events(events: list[dict], *, trace_id: str | None = None,
         out = [e for e in out if e["type"] == type]
     if kind is not None:
         out = [e for e in out if e["kind"] == kind]
+    if instance is not None:
+        out = [e for e in out if event_instance(e) == instance]
     return out
 
 
@@ -462,9 +479,12 @@ def incidents(events: list[dict], trace_id: str) -> list[dict]:
 #   * Cost is reported only where agent-ledger actually emitted
 #     spans; a source with no spans gets cost None -- never a
 #     borrowed fleet total, never a silent zero.
-# The store has no instance dimension (see design notes section 4):
-# Tier 2 groups a type's events by trace and calls those rows RUNS,
-# not instances.
+# Instance identity (slice 3): producers may declare an optional
+# top-level ``instance`` per event. Tier 2 groups a type's events by
+# trace and calls those rows RUNS; when a store carries declared
+# instances it additionally groups by (source, instance) and calls
+# those rows INSTANCES. A store with no declared instance anywhere
+# gets no instances section at all -- the runs labeling stands.
 # ---------------------------------------------------------------------
 
 PRODUCER_ROLES = {
@@ -689,6 +709,44 @@ def _run_rows(events: list[dict], source: str, mine: list[dict]) -> list[dict]:
     return rows
 
 
+def _instance_rows(mine: list[dict]) -> list[dict]:
+    """Per-instance rows for one source's events, grouped by the
+    effective instance (declared ``instance`` field, else the actor
+    name -- see event_instance).
+
+    ``explicit`` is True when at least one of the row's events carried
+    a declared instance; a row built purely from the actor-name
+    fallback is the pre-instance behavior wearing an instance label,
+    and the UI says so rather than dressing it up.
+    """
+    rows = []
+    for instance in dict.fromkeys(event_instance(e) for e in mine):
+        own = [e for e in mine if event_instance(e) == instance]
+        cs = cost_summary(own)
+        outcome = ""
+        for e in reversed(own):
+            if e["type"] in ("run_finished", "run_end", "outcome"):
+                outcome = str(e["payload"].get("result")
+                              or e["payload"].get("outcome") or "")
+                break
+        rows.append({
+            "instance": instance,
+            "explicit": any("instance" in e for e in own),
+            "agents": sorted({e["agent"] for e in own}),
+            "traces": sorted({e["trace_id"] for e in own}),
+            "events": len(own),
+            "first_seq": own[0]["seq"], "last_seq": own[-1]["seq"],
+            "first_ts": own[0]["ts"], "last_ts": own[-1]["ts"],
+            "decisions": decision_tallies(own)["buckets"],
+            "decisions_total": decision_tallies(own)["total"],
+            "cost_usd": cs["total_usd"] if cs["spans"] else None,
+            "outcome": outcome,
+            "last_summary": summarize_event(own[-1]),
+        })
+    rows.sort(key=lambda r: r["first_seq"])
+    return rows
+
+
 def fleet_table(events: list[dict], *, now: float) -> list[dict]:
     """Tier 1 fleet table: one row per agent type, whole store.
 
@@ -713,6 +771,8 @@ def fleet_table(events: list[dict], *, now: float) -> list[dict]:
         rows.append({
             "source": source, "agent": f["agent"], "status": f["status"],
             "events": len(mine),
+            "instances": len({event_instance(e) for e in mine}),
+            "has_instance_data": any("instance" in e for e in mine),
             "runs": len({e["trace_id"] for e in mine}),
             "traces": sorted({e["trace_id"] for e in mine}),
             "decisions": tallies["buckets"],
@@ -784,6 +844,11 @@ def source_summary(events: list[dict], source: str, *, now: float) -> dict | Non
         for e in mine:
             counts[e[field]] = counts.get(e[field], 0) + 1
         facets[field] = counts
+    instance_counts: dict[str, int] = {}
+    for e in mine:
+        inst = event_instance(e)
+        instance_counts[inst] = instance_counts.get(inst, 0) + 1
+    facets["instance"] = instance_counts
     return {
         "source": source,
         "role": PRODUCER_ROLES.get(source, ""),
@@ -801,6 +866,8 @@ def source_summary(events: list[dict], source: str, *, now: float) -> dict | Non
         "sparkline": _rate_buckets(mine),
         "facets": facets,
         "runs": _run_rows(events, source, mine),
+        "instances": _instance_rows(mine),
+        "has_instance_data": any("instance" in e for e in mine),
         "pending": [p for p in pending_approvals(events)
                     if p["source"] == source],
     }

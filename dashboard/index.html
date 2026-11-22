@@ -70,6 +70,15 @@
   #integrity .bad-t{color:var(--bad);font-weight:700}
   #integrity .note{color:var(--faint);font-size:11px;margin-left:auto;text-align:right}
   /* fleet table (tier 1) + runs table (tier 2) */
+  /* config view + propose-only (tier 2) */
+  .cfg-doc{margin-bottom:16px}
+  .cfg-head{margin-bottom:6px;font-size:12px}
+  .cfg-pre{background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;font-size:11.5px;line-height:1.5;overflow-x:auto;white-space:pre;
+    max-height:340px;overflow-y:auto;margin:0 0 8px}
+  .cfg-text{width:100%;box-sizing:border-box;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:6px;padding:10px 12px;
+    font-family:inherit;font-size:11.5px;line-height:1.5;margin-top:8px}
   .ftable{width:100%;border-collapse:collapse;font-size:12px}
   .ftable th{font-size:9.5px;letter-spacing:.22em;color:var(--faint);text-align:left;
              padding:4px 8px;border-bottom:1px solid var(--line2);font-weight:600;white-space:nowrap}
@@ -330,10 +339,10 @@
     <div style="overflow-x:auto">
     <table class="ftable" id="fleet-table">
       <thead><tr>
-        <th>AGENT TYPE</th><th>STATUS</th><th>RUNS</th><th>EVENTS</th>
+        <th>AGENT TYPE</th><th>STATUS</th><th>RUNS</th><th>INSTANCES</th><th>EVENTS</th>
         <th>DECISIONS</th><th>COST</th><th>EVENT RATE</th><th>LAST EVENT</th>
       </tr></thead>
-      <tbody id="fleet-body"><tr><td colspan="8" class="sub">—</td></tr></tbody>
+      <tbody id="fleet-body"><tr><td colspan="9" class="sub">—</td></tr></tbody>
     </table>
     </div>
   </section>
@@ -423,8 +432,21 @@
 
   <div class="pendbox" id="ag-pending" style="display:none"></div>
 
+  <section id="ag-instances-sec" style="display:none">
+    <h2>INSTANCES <span class="sub">— grouped by the instance each producer declared on its events (AGENT_INSTANCE). Every process of this type, with its own tallies.</span></h2>
+    <div style="overflow-x:auto">
+    <table class="ftable" id="ag-instances-table">
+      <thead><tr>
+        <th>INSTANCE</th><th>EVENTS</th><th>DECISIONS</th><th>COST</th>
+        <th>OUTCOME</th><th>FIRST → LAST</th><th></th>
+      </tr></thead>
+      <tbody id="ag-instances-body"><tr><td colspan="7" class="sub">—</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
   <section>
-    <h2>RUNS <span class="sub">— grouped by trace. The store carries no instance field yet, so one row is one trace's worth of this agent — a run, not a process instance.</span></h2>
+    <h2>RUNS <span class="sub" id="ag-runs-sub">— grouped by trace: one row is one trace's worth of this agent — a run, not a process instance.</span></h2>
     <div style="overflow-x:auto">
     <table class="ftable" id="ag-runs-table">
       <thead><tr>
@@ -434,6 +456,11 @@
       <tbody id="ag-runs-body"><tr><td colspan="7" class="sub">—</td></tr></tbody>
     </table>
     </div>
+  </section>
+
+  <section id="ag-config-sec">
+    <h2>CONFIGURATION <span class="sub">— effective config, read from the producer's own files in the fleet checkout · view-only: this dashboard never writes config. Live editing is deliberately not offered — see the platform audit, finding F1.</span></h2>
+    <div id="ag-config"><div class="empty-note">—</div></div>
   </section>
 
   <main id="ag-cols">
@@ -1288,6 +1315,7 @@ function renderOverview(ov){
     + '<span class="sub">' + esc(trunc(r.detail, 44)) + '</span></td>'
     + '<td class="num"><span class="stdot" style="background:' + (STATUS_TONE[r.status] || "#49525f") + '"></span>' + esc(r.status.toUpperCase()) + '</td>'
     + '<td class="num">' + r.runs + '</td>'
+    + '<td class="num">' + (r.has_instance_data ? r.instances : "—") + '</td>'
     + '<td class="num">' + r.events + '</td>'
     + '<td>' + tallyHTML(r.decisions) + '</td>'
     + '<td class="num">' + costHTML(r.cost_usd) + '</td>'
@@ -1323,10 +1351,10 @@ async function loadOverview(){
 }
 
 /* ---- tier 2: per-agent-type page ---- */
-let agSource = null, agFilters = {kind:null, type:null, trace:null, decisions:false}, agPaused = false;
+let agSource = null, agFilters = {kind:null, type:null, trace:null, instance:null, decisions:false}, agPaused = false;
 
 function resetAgFilters(){
-  agFilters = {kind:null, type:null, trace:null, decisions:false};
+  agFilters = {kind:null, type:null, trace:null, instance:null, decisions:false};
   agPaused = false;
 }
 
@@ -1363,7 +1391,38 @@ function renderAgent(ag){
         + (p.detail ? " — " + esc(p.detail) : "")).join("<br>");
   } else pb.style.display = "none";
 
-  // runs — proto-instances, labeled as runs
+  // instances — real, when producers declared instance identity on
+  // their events; the section stays hidden entirely when none did,
+  // and the runs table below keeps its honest "a run, not a process
+  // instance" labeling either way.
+  const isec = $("ag-instances-sec");
+  if (ag.has_instance_data && (ag.instances || []).length){
+    isec.style.display = "";
+    $("ag-instances-body").innerHTML = ag.instances.map(r =>
+      '<tr><td><span class="src">' + esc(r.instance) + '</span>'
+      + (r.explicit ? '' : ' <span class="sub">(actor-name fallback — no declared instance)</span>')
+      + '<br><span class="sub">' + esc(r.agents.join(", ")) + ' · ' + r.traces.length + ' trace(s)</span></td>'
+      + '<td class="num">' + r.events + '</td>'
+      + '<td>' + tallyHTML(r.decisions) + '</td>'
+      + '<td class="num">' + costHTML(r.cost_usd) + '</td>'
+      + '<td class="num">' + esc(r.outcome || "—") + '</td>'
+      + '<td class="num">' + hhmmss(r.first_ts) + ' → ' + hhmmss(r.last_ts)
+      + ' <span class="sub">#' + r.first_seq + '–#' + r.last_seq + '</span></td>'
+      + '<td><span class="walk-link" data-instance="' + esc(r.instance) + '">FILTER STREAM →</span></td></tr>'
+    ).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("#ag-instances-body .walk-link"), el => {
+      el.addEventListener("click", () => {
+        agFilters.instance = el.getAttribute("data-instance");
+        loadAgent();
+        document.getElementById("ag-cols").scrollIntoView();
+      });
+    });
+  } else isec.style.display = "none";
+  $("ag-runs-sub").textContent = ag.has_instance_data
+    ? "— grouped by trace: one row is one trace's worth of this agent. Declared instances are grouped above; a run can span instances and an instance can span runs."
+    : "— grouped by trace: one row is one trace's worth of this agent — a run, not a process instance. This store carries no declared instance identity.";
+
+  // runs — grouped by trace, labeled as runs
   $("ag-runs-body").innerHTML = ag.runs.length ? ag.runs.map(r =>
     '<tr><td class="num" title="' + esc(r.trace_id) + '">' + esc(trunc(r.trace_id, 26)) + '</td>'
     + '<td class="num">' + r.events + '</td>'
@@ -1412,6 +1471,171 @@ function renderAgent(ag){
   } else $("ag-outcomes").innerHTML = '<div class="empty-note">No run outcomes recorded.</div>';
 
   renderFacets(ag);
+  loadAgentConfig();
+}
+
+/* ---- tier 2: configuration (view-only) + propose-only patches ----
+   The server serves the effective config read from the producer's
+   own files, secret-shaped values already redacted. Proposing a
+   change happens entirely here in the browser: edit the redacted
+   rendering, download a unified-diff patch file whose header binds
+   it to the exact config version seen (sha256), then a human
+   reviews and applies it in the producer repo with git. The server
+   never receives the patch -- there is no apply button, by design. */
+
+let agConfigDocs = [];
+
+function unifiedDiff(oldText, newText, relPath){
+  const a = oldText.split("\n"), b = newText.split("\n");
+  // line-level LCS (config files are small)
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m + 1}, () => new Uint32Array(n + 1));
+  for (let i = m - 1; i >= 0; i--)
+    for (let j = n - 1; j >= 0; j--)
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1
+                               : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const ops = []; // [tag, line] tag: " " context, "-" del, "+" add
+  let i = 0, j = 0;
+  while (i < m && j < n){
+    if (a[i] === b[j]){ ops.push([" ", a[i]]); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]){ ops.push(["-", a[i]]); i++; }
+    else { ops.push(["+", b[j]]); j++; }
+  }
+  while (i < m){ ops.push(["-", a[i]]); i++; }
+  while (j < n){ ops.push(["+", b[j]]); j++; }
+  const CTX = 3, hunks = [];
+  let k = 0;
+  while (k < ops.length){
+    if (ops[k][0] === " "){ k++; continue; }
+    const start = Math.max(0, k - CTX);
+    let end = k;
+    let lastChange = k;
+    while (end < ops.length){
+      if (ops[end][0] !== " ") lastChange = end;
+      if (end - lastChange > 2 * CTX) break;
+      end++;
+    }
+    end = Math.min(ops.length, lastChange + CTX + 1);
+    hunks.push([start, end]);
+    k = end;
+  }
+  if (!hunks.length) return null;
+  let out = "--- a/" + relPath + "\n+++ b/" + relPath + "\n";
+  hunks.forEach(([s, e]) => {
+    let aStart = 0, bStart = 0, aLen = 0, bLen = 0;
+    for (let t = 0; t < s; t++){ if (ops[t][0] !== "+") aStart++; if (ops[t][0] !== "-") bStart++; }
+    const lines = [];
+    for (let t = s; t < e; t++){
+      lines.push(ops[t][0] + ops[t][1]);
+      if (ops[t][0] !== "+") aLen++;
+      if (ops[t][0] !== "-") bLen++;
+    }
+    out += "@@ -" + (aStart + 1) + "," + aLen + " +" + (bStart + 1) + "," + bLen + " @@\n"
+         + lines.join("\n") + "\n";
+  });
+  return out;
+}
+
+function renderAgentConfig(payload){
+  const box = $("ag-config");
+  agConfigDocs = payload.documents || [];
+  if (!payload.available){
+    box.innerHTML = '<div class="empty-note">' + esc(payload.reason || "config not available in this deployment") + '</div>';
+    return;
+  }
+  box.innerHTML = agConfigDocs.map((d, idx) => {
+    if (d.error) return '<div class="cfg-doc"><div class="cfg-head"><span class="src">'
+      + esc(d.rel_path) + '</span></div><div class="empty-note">' + esc(d.error) + '</div></div>';
+    return '<div class="cfg-doc">'
+      + '<div class="cfg-head"><span class="src">' + esc(d.rel_path) + '</span>'
+      + ' <span class="sub">sha256 ' + esc(d.sha256.slice(0, 12)) + '…</span>'
+      + (d.redacted_paths.length
+          ? ' <span class="sub">redacted: ' + d.redacted_paths.map(esc).join(", ") + ' — values never leave the server</span>'
+          : '')
+      + '</div>'
+      + '<pre class="cfg-pre">' + esc(JSON.stringify(d.config, null, 2)) + '</pre>'
+      + '<div class="inc-controls">'
+      + '<button type="button" class="cfg-prop-btn" data-doc="' + idx + '">PROPOSE CHANGE</button>'
+      + '<span class="sub">download a patch → review it → apply it in the producer repo with git apply. This dashboard cannot apply it.</span>'
+      + '</div>'
+      + '<div class="cfg-editor" id="cfg-editor-' + idx + '" style="display:none">'
+      + '<textarea class="cfg-text" id="cfg-text-' + idx + '" rows="18" spellcheck="false"></textarea>'
+      + '<div class="inc-controls">'
+      + '<button type="button" class="cfg-dl-btn" data-doc="' + idx + '">DOWNLOAD PATCH (.patch)</button>'
+      + '<span class="sub" id="cfg-note-' + idx + '">the patch is generated in your browser from the redacted rendering above; '
+      + 'lines carrying “set (redacted)” are placeholders — a patch that touches them must have the real values restored by hand before applying.</span>'
+      + '</div></div></div>';
+  }).join("");
+  Array.prototype.forEach.call(box.querySelectorAll(".cfg-prop-btn"), btn => {
+    btn.addEventListener("click", () => {
+      const idx = +btn.getAttribute("data-doc");
+      const ed = $("cfg-editor-" + idx);
+      const open = ed.style.display !== "none";
+      ed.style.display = open ? "none" : "";
+      if (!open) $("cfg-text-" + idx).value = agConfigDocs[idx].text;
+    });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll(".cfg-dl-btn"), btn => {
+    btn.addEventListener("click", () => {
+      const idx = +btn.getAttribute("data-doc");
+      const doc = agConfigDocs[idx];
+      const edited = $("cfg-text-" + idx).value;
+      const note = $("cfg-note-" + idx);
+      let parsed;
+      try { parsed = JSON.parse(edited); }
+      catch(e){ note.textContent = "not valid JSON — fix it before downloading a patch: " + e.message; return; }
+      const diff = unifiedDiff(doc.text, edited, doc.rel_path);
+      if (!diff){ note.textContent = "no changes — the patch would be empty."; return; }
+      const header =
+        "# AgentTrace config proposal — generated in the dashboard browser.\n"
+        + "# NOT applied by the dashboard. Flow: review, then apply in the\n"
+        + "# producer repo:  git apply <this file>\n"
+        + "# Source file: " + doc.rel_path + "\n"
+        + "# Base config sha256: " + doc.sha256 + "\n"
+        + "#   (if the file's hash has moved since, this proposal is stale.)\n"
+        + (doc.redacted_paths.length
+            ? "# Redacted in the dashboard view (values never served): "
+              + doc.redacted_paths.join(", ") + "\n"
+              + "# Lines carrying the redaction placeholder must have real\n"
+              + "# values restored by hand before this patch is applied.\n"
+            : "")
+        + "#\n";
+      const blob = new Blob([header + diff], {type: "text/plain"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = doc.name.replace(/\.json$/, "") + ".proposal.patch";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      note.textContent = "patch downloaded — it binds base sha256 " + doc.sha256.slice(0, 12)
+        + "…; review it, then apply with git apply in the producer repo.";
+    });
+  });
+}
+
+let agConfigKey = null;
+
+async function loadAgentConfig(){
+  if (!agSource) return;
+  try {
+    const r = await fetch("/api/agent-config?source=" + encodeURIComponent(agSource), {cache:"no-store"});
+    if (!r.ok) return;
+    const payload = await r.json();
+    // The agent page re-renders on every poll tick; the config panel
+    // must not be rebuilt under the operator -- least of all while a
+    // proposal edit is open. Re-render only when the served config
+    // actually changed, and never while an editor is open (the
+    // patch header's base hash makes that staleness detectable,
+    // which is what the hash is for).
+    const key = agSource + "|" + (payload.documents || [])
+      .map(d => d.sha256 || d.error || "").join(",");
+    if (key === agConfigKey) return;
+    const editorOpen = Array.prototype.some.call(
+      document.querySelectorAll(".cfg-editor"),
+      el => el.style.display !== "none");
+    if (editorOpen && agConfigDocs.length) return;
+    agConfigKey = key;
+    renderAgentConfig(payload);
+  } catch(e){ /* leave the last good config view on screen */ }
 }
 
 function chipHTML(field, value, count, active){
@@ -1435,6 +1659,7 @@ function renderFacets(ag){
     row("KIND", "kind", f.kind, agFilters.kind)
     + row("TYPE", "type", f.type, agFilters.type)
     + row("TRACE", "trace", f.trace_id, agFilters.trace)
+    + (ag.has_instance_data ? row("INSTANCE", "instance", f.instance, agFilters.instance) : "")
     + '<div class="facetrow"><span class="fl">VIEW</span>'
     + '<button type="button" class="chip' + (agFilters.decisions ? " on" : "") + '" id="ag-dec-toggle">DECISIONS ONLY</button>'
     + '<button type="button" class="chip' + (agPaused ? " on" : "") + '" id="ag-pause">'
@@ -1474,6 +1699,7 @@ async function loadAgentEvents(){
   if (agFilters.kind) q.set("kind", agFilters.kind);
   if (agFilters.type) q.set("type", agFilters.type);
   if (agFilters.trace) q.set("trace", agFilters.trace);
+  if (agFilters.instance) q.set("instance", agFilters.instance);
   if (agFilters.decisions) q.set("decisions", "1");
   try {
     const r = await fetch("/api/agent-events?" + q.toString(), {cache:"no-store"});

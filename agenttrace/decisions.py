@@ -25,7 +25,8 @@ from __future__ import annotations
 from .schema import KIND_DECISION_RECORD, new_event
 
 
-def canary_decision_events(verdict: dict, *, trace_id: str) -> list[dict]:
+def canary_decision_events(verdict: dict, *, trace_id: str,
+                           instance: str | None = None) -> list[dict]:
     """One decision_record event from a canary compare verdict dict."""
     base = verdict.get("base_aggregate", {})
     cand = verdict.get("cand_aggregate", {})
@@ -55,10 +56,12 @@ def canary_decision_events(verdict: dict, *, trace_id: str) -> list[dict]:
         type="decision_record",
         kind=KIND_DECISION_RECORD,
         payload=record,
+        instance=instance,
     )]
 
 
-def gate_decision_events(entry: dict, *, trace_id: str) -> list[dict]:
+def gate_decision_events(entry: dict, *, trace_id: str,
+                         instance: str | None = None) -> list[dict]:
     """Decision records from one agent-gate audit entry (0 or 1 records).
 
     Only ``policy_decision`` and ``screening_findings`` entries are
@@ -105,11 +108,13 @@ def gate_decision_events(entry: dict, *, trace_id: str) -> list[dict]:
         type="decision_record",
         kind=KIND_DECISION_RECORD,
         payload=record,
+        instance=instance,
     )]
 
 
 def factory_floor_decision_events(groundedness_payload: dict, *, trace_id: str,
-                                  ts: str) -> list[dict]:
+                                  ts: str,
+                                  instance: str | None = None) -> list[dict]:
     """One decision_record from a factory-floor groundedness event.
 
     The groundedness check is a computed decision point: the checker
@@ -145,4 +150,5 @@ def factory_floor_decision_events(groundedness_payload: dict, *, trace_id: str,
         type="decision_record",
         kind=KIND_DECISION_RECORD,
         payload=record,
+        instance=instance,
     )]

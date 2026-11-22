@@ -15,9 +15,22 @@ generalized replay (/api/replay: a step-through over any scope of a
 trace, per-step state from TraceReplay, anomaly classes from the
 query layer) and trace compare (/api/compare: TraceReplay's
 diff_traces over two traces of the store). The server holds no state
-of its own, opens no
-producer artifact, and rejects every non-GET request with 405: there
-is no approve / pause / kill / config surface here, by design.
+of its own and rejects every non-GET request with 405: there is no
+approve / pause / kill / config-write surface here, by design.
+
+Slice 3 amends one clause of the original invariant -- deliberately,
+and documented here rather than slipped in: the server originally
+"opened no producer artifact." The config VIEW (/api/agent-config)
+now reads producer config files, under all of these constraints:
+only the exact files on the CONFIG_ARTIFACTS allowlist below, only
+under the fleet root named by the AGENTTRACE_FLEET_ROOT environment
+variable (a directory of sibling producer checkouts, e.g. the
+Platform-in-a-Box fleet/ layout), read-only, GET-only, with
+secret-shaped values redacted before anything is served. When the
+fleet root is unset or a file is absent, the endpoint says so
+plainly; it never fabricates a config. Proposing a change is a
+client-side patch download generated in the browser -- the server
+never receives, stores, or applies it.
 
 Usage:
     python -m dashboard.server --store drill/output/<trace>/store.jsonl
@@ -27,7 +40,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import re
 import time
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -299,21 +315,139 @@ def build_agent(path: Path, source: str) -> dict | None:
     return summary
 
 
+# ---------------------------------------------------------------------
+# Config view (slice 3): the ONE documented exception to this
+# server's original "opens no producer artifact" invariant -- see the
+# module docstring. Producer config files are read only when they are
+# on this allowlist, only under the AGENTTRACE_FLEET_ROOT directory,
+# and secret-shaped values are redacted before anything is served.
+# ---------------------------------------------------------------------
+
+CONFIG_ARTIFACTS: dict[str, list[str]] = {
+    "agent-gate": ["agent-gate/policy.json"],
+    "agent-canary": ["agent-canary/baselines/*.baseline.json"],
+}
+
+# A config key is secret-shaped when its name carries one of these
+# markers. Redaction is by this allowlist-of-key-shapes: the key is
+# shown, the value never is.
+_SECRET_KEY_MARKERS = (
+    "token", "secret", "password", "passwd", "credential",
+    "api_key", "apikey", "api-key", "private_key", "access_key",
+    "secret_key",
+)
+
+
+def _is_secret_key(key: str) -> bool:
+    lowered = key.lower()
+    return any(marker in lowered for marker in _SECRET_KEY_MARKERS)
+
+
+def redact_config(value, path: str = "$",
+                  redacted: list[str] | None = None):
+    """Copy a parsed config with secret-shaped values masked.
+
+    Returns (masked_copy, redacted_paths). A secret-shaped key's
+    value becomes "set (redacted)" when one is set, "NOT SET" when
+    it is empty/null -- the dashboard shows that a credential exists,
+    never what it is. Non-secret structure passes through unchanged.
+    """
+    if redacted is None:
+        redacted = []
+    if isinstance(value, dict):
+        out = {}
+        for key, val in value.items():
+            child = f"{path}.{key}"
+            if _is_secret_key(key):
+                redacted.append(child)
+                out[key] = "set (redacted)" if val not in (None, "") \
+                    else "NOT SET"
+            else:
+                out[key] = redact_config(val, child, redacted)[0]
+        return out, redacted
+    if isinstance(value, list):
+        return [redact_config(v, f"{path}[{i}]", redacted)[0]
+                for i, v in enumerate(value)], redacted
+    return value, redacted
+
+
+def build_agent_config(source: str, fleet_root: str | None) -> dict:
+    """Tier 2 config view for one agent type: its effective config
+    from the allowlisted artifact(s) in the fleet checkout.
+
+    Honest absence: when the fleet root is unset, the type has no
+    allowlisted artifact, or the file is not there, ``available`` is
+    False and ``reason`` says exactly which -- never a fabricated or
+    partial config presented as real.
+    """
+    base = {"source": source, "documents": []}
+    patterns = CONFIG_ARTIFACTS.get(source)
+    if not patterns:
+        return {**base, "available": False,
+                "reason": "no config artifacts are allowlisted for "
+                          "this agent type"}
+    if not fleet_root:
+        return {**base, "available": False,
+                "reason": "config not available in this deployment — "
+                          "AGENTTRACE_FLEET_ROOT is not set on the "
+                          "dashboard server"}
+    root = Path(fleet_root).resolve()
+    documents = []
+    for pattern in patterns:
+        for file_path in sorted(root.glob(pattern)):
+            resolved = file_path.resolve()
+            if root not in resolved.parents:
+                continue  # allowlist globs stay inside the fleet root
+            raw = resolved.read_bytes()
+            rel = str(resolved.relative_to(root))
+            try:
+                parsed = json.loads(raw.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError) as exc:
+                documents.append({
+                    "name": resolved.name, "rel_path": rel,
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "error": f"config file is not valid JSON: {exc}",
+                    "config": None, "redacted_paths": [], "text": None,
+                })
+                continue
+            masked, redacted_paths = redact_config(parsed)
+            documents.append({
+                "name": resolved.name, "rel_path": rel,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "config": masked,
+                "redacted_paths": redacted_paths,
+                # The patch base for propose-only: the redacted
+                # rendering, never the raw file -- raw secret values
+                # are not sent to the browser at all.
+                "text": json.dumps(masked, indent=2) + "\n",
+            })
+    if not documents:
+        return {**base, "available": False,
+                "reason": "config not available in this deployment — "
+                          "no allowlisted config file found under "
+                          "the fleet root"}
+    return {**base, "available": True, "reason": None,
+            "documents": documents}
+
+
 def build_agent_events(path: Path, source: str, *, kind: str | None = None,
                        type: str | None = None, trace_id: str | None = None,
+                       instance: str | None = None,
                        decisions_only: bool = False,
                        limit: int = 150) -> dict:
     """Tier 2 faceted event stream for one source: newest first,
     capped, with the matched total so the cap is never silent."""
     events = load_store_events(path)
     mine = query_mod.query_events(events, source=source, kind=kind,
-                                  type=type, trace_id=trace_id)
+                                  type=type, trace_id=trace_id,
+                                  instance=instance)
     if decisions_only:
         mine = [e for e in mine if e["kind"] == "decision_record"]
     total = len(mine)
     rows = [{
         "seq": e["seq"], "ts": e["ts"], "trace_id": e["trace_id"],
-        "agent": e["agent"], "type": e["type"], "kind": e["kind"],
+        "agent": e["agent"], "instance": query_mod.event_instance(e),
+        "type": e["type"], "kind": e["kind"],
         "summary": query_mod.summarize_event(e),
     } for e in mine[-limit:]][::-1]
     return {"source": source, "total": total, "shown": len(rows),
@@ -479,6 +613,7 @@ def build_compare(path: Path, trace_a: str, trace_b: str) -> dict | None:
 
 class DashboardHandler(BaseHTTPRequestHandler):
     store_path: Path = Path("store.jsonl")
+    fleet_root: str | None = None
     protocol_version = "HTTP/1.1"
 
     def log_message(self, *args):  # keep the console quiet
@@ -518,6 +653,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     self._json(404, {"error": "no such agent type"})
                 else:
                     self._json(200, payload)
+            elif parsed.path == "/api/agent-config":
+                qs = parse_qs(parsed.query)
+                source = qs.get("source", [""])[0]
+                if not source:
+                    self._json(400, {"error": "source is required"})
+                else:
+                    self._json(200, build_agent_config(
+                        source, self.fleet_root))
             elif parsed.path == "/api/agent-events":
                 qs = parse_qs(parsed.query)
                 source = qs.get("source", [""])[0]
@@ -534,6 +677,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         kind=qs.get("kind", [None])[0] or None,
                         type=qs.get("type", [None])[0] or None,
                         trace_id=qs.get("trace", [None])[0] or None,
+                        instance=qs.get("instance", [None])[0] or None,
                         decisions_only=qs.get("decisions", ["0"])[0] == "1",
                         limit=limit))
             elif parsed.path == "/api/walk":
@@ -608,9 +752,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
 
 def make_server(store_path: str | Path, host: str = "127.0.0.1",
-                port: int = 8765) -> ThreadingHTTPServer:
+                port: int = 8765,
+                fleet_root: str | None = None) -> ThreadingHTTPServer:
+    if fleet_root is None:
+        fleet_root = os.environ.get("AGENTTRACE_FLEET_ROOT") or None
     handler = type("BoundDashboardHandler", (DashboardHandler,),
-                   {"store_path": Path(store_path)})
+                   {"store_path": Path(store_path),
+                    "fleet_root": fleet_root})
     return ThreadingHTTPServer((host, port), handler)
 
 
@@ -621,8 +769,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args(argv)
     server = make_server(args.store, args.host, args.port)
+    fleet = server.RequestHandlerClass.fleet_root
     print(f"AgentTrace dashboard (read-only) -> http://{args.host}:{args.port}/ "
-          f"store={args.store}", flush=True)
+          f"store={args.store} fleet_root={fleet or '(unset)'}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

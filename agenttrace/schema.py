@@ -36,6 +36,16 @@ CORE_FIELDS = {
     "payload": dict,
 }
 
+# Optional fields an event may carry. ``instance`` names the producing
+# process instance of a source (one agent type can run as many
+# processes); it is deliberately NOT required and NOT a version bump:
+# v1 validation tolerates it, stores written before it existed stay
+# valid, and the query layer treats a missing instance as the event's
+# ``agent`` value (see query.event_instance).
+OPTIONAL_FIELDS = {
+    "instance": str,
+}
+
 # Additional fields the store itself assigns on append.
 STORE_FIELDS = {
     "seq": int,
@@ -88,6 +98,12 @@ def validate_event(event: dict, *, stored: bool = False) -> dict:
         raise SchemaError(f"event must be a dict, got {type(event).__name__}")
     check_version(event)
     _check_fields(event, CORE_FIELDS, "event")
+    for name, typ in OPTIONAL_FIELDS.items():
+        if name in event and not isinstance(event[name], typ):
+            raise SchemaError(
+                f"event optional field {name!r} must be {typ.__name__}, "
+                f"got {type(event[name]).__name__}"
+            )
     if event["kind"] not in KINDS:
         raise SchemaError(
             f"event kind {event['kind']!r} is not one of {sorted(KINDS)}"
@@ -98,8 +114,15 @@ def validate_event(event: dict, *, stored: bool = False) -> dict:
 
 
 def new_event(*, trace_id: str, ts: str, source: str, agent: str,
-              type: str, payload: dict, kind: str = KIND_EVENT) -> dict:
-    """Build a schema-conformant event (pre-store; no seq/hash yet)."""
+              type: str, payload: dict, kind: str = KIND_EVENT,
+              instance: str | None = None) -> dict:
+    """Build a schema-conformant event (pre-store; no seq/hash yet).
+
+    ``instance`` is the producing process instance of the source, when
+    the producer declares one; the key is omitted entirely when it
+    does not, so events built from older producer artifacts are
+    byte-identical to what they were before the field existed.
+    """
     event = {
         "schema_version": SCHEMA_VERSION,
         "trace_id": trace_id,
@@ -110,4 +133,6 @@ def new_event(*, trace_id: str, ts: str, source: str, agent: str,
         "kind": kind,
         "payload": payload,
     }
+    if instance is not None:
+        event["instance"] = instance
     return validate_event(event)

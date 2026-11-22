@@ -56,8 +56,10 @@ def ingest_canary_verdict(path: str | Path) -> list[dict]:
         agent="agent-canary",
         type="compare_verdict",
         payload=verdict,
+        instance=verdict.get("instance"),
     )]
-    events += decisions.canary_decision_events(verdict, trace_id=trace_id)
+    events += decisions.canary_decision_events(
+        verdict, trace_id=trace_id, instance=verdict.get("instance"))
     return _finish(events)
 
 
@@ -73,8 +75,10 @@ def ingest_gate_audit(path: str | Path) -> list[dict]:
             agent=entry.get("agent", "agent-gate"),
             type=entry["type"],
             payload=entry,
+            instance=entry.get("instance"),
         ))
-        events += decisions.gate_decision_events(entry, trace_id=trace_id)
+        events += decisions.gate_decision_events(
+            entry, trace_id=trace_id, instance=entry.get("instance"))
     return _finish(events)
 
 
@@ -89,6 +93,7 @@ def ingest_blastradius_audit(path: str | Path) -> list[dict]:
             agent=record.get("actor", "blastradius-agent"),
             type=record["event"],
             payload=record,
+            instance=record.get("instance"),
         ))
     return _finish(events)
 
@@ -129,10 +134,17 @@ def ingest_ledger_otlp(path: str | Path) -> list[dict]:
             for span in scope_span.get("spans", []):
                 spans.append((span, _otlp_attrs(span)))
     join: dict[str, str] = {}
+    instance_join: dict[str, str] = {}
     for span, attrs in spans:
         external = attrs.get("agenttrace.trace_id")
         if external:
             join[span["traceId"]] = external
+        # Same declared-by-the-producer pattern for instance identity:
+        # the run's root span may declare ``agenttrace.instance``, and
+        # every span of that OTLP trace then belongs to that instance.
+        declared_instance = attrs.get("agenttrace.instance")
+        if declared_instance:
+            instance_join[span["traceId"]] = declared_instance
     events = []
     for span, attrs in spans:
         otlp_trace_id = span["traceId"]
@@ -152,6 +164,8 @@ def ingest_ledger_otlp(path: str | Path) -> list[dict]:
             agent=attrs.get("agentledger.agent", "agent-ledger"),
             type="span",
             payload=payload,
+            instance=(attrs.get("agenttrace.instance")
+                      or instance_join.get(otlp_trace_id)),
         ))
     return _finish(events)
 
@@ -176,10 +190,12 @@ def ingest_factory_floor_trace(path: str | Path) -> list[dict]:
             agent=record.get("agent", "factory-floor-agent"),
             type=record["type"],
             payload=record["payload"],
+            instance=record.get("instance"),
         ))
         if record["type"] == "groundedness":
             events += decisions.factory_floor_decision_events(
-                record["payload"], trace_id=trace_id, ts=record["ts"])
+                record["payload"], trace_id=trace_id, ts=record["ts"],
+                instance=record.get("instance"))
     return _finish(events)
 
 
@@ -203,6 +219,7 @@ def ingest_chaos_report(path: str | Path) -> list[dict]:
         agent="agent-chaos",
         type="chaos_report",
         payload={"headline": report["headline"], "rows": len(report["rows"])},
+        instance=report.get("instance"),
     )]
     for row in report["rows"]:
         events.append(new_event(
@@ -212,5 +229,6 @@ def ingest_chaos_report(path: str | Path) -> list[dict]:
             agent="agent-chaos",
             type="scenario_result",
             payload=row,
+            instance=report.get("instance"),
         ))
     return _finish(events)

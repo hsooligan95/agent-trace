@@ -254,7 +254,7 @@ def test_page_carries_tier_scaffolding(tmp_path):
                        b"ONE ROW PER AGENT TYPE", b'id="view-overview"',
                        b'id="view-agent"', b'id="view-topology"',
                        b'id="fleet-body"', b'id="ag-runs-body"',
-                       b"REPLAY THIS RUN", b"no instance field yet",
+                       b"REPLAY THIS RUN", b"no declared instance identity",
                        b"Not provenance"):
             assert marker in body, f"page missing {marker!r}"
     finally:
