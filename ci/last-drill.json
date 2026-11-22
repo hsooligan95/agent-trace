@@ -1,8 +1,8 @@
 {
-  "trace_id": "trace-drill-2f982e14",
+  "trace_id": "trace-drill-96a46f5f",
   "drill_date": "2026-11-22",
-  "generated_at": "2026-11-22T04:24:50+00:00",
-  "environment": "local-simulation",
+  "generated_at": "2026-11-22T04:36:36+00:00",
+  "environment": "github-actions",
   "event_count": 117,
   "chain_ok": true,
   "chain_verdict": "Chain OK \u2014 117 events, every hash verified.",
