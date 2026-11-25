@@ -24,7 +24,11 @@ from dashboard.server import (  # noqa: E402
 )
 
 SAMPLES = REPO / "samples"
-DEMO_STORE = REPO / "dashboard" / "live-store.jsonl"
+# Frozen fixture: a committed copy of the drill store. These tests must
+# never read dashboard/live-store.jsonl -- that file is the live demo
+# store and its active trace changes with every demo run, which made
+# this module fail on any machine where the demo had run (gap #7).
+DEMO_STORE = REPO / "tests" / "fixtures" / "drill-store.jsonl"
 DRILL_TRACE = "trace-drill-11028023"
 
 
@@ -57,8 +61,8 @@ def _request(port, method, path, body=None):
 # ----------------------------------------------------------------
 
 def test_incidents_on_drill_store():
-    """The phase-2 demo store yields exactly the two incidents the
-    drill is known for: the canary BLOCK and the blast-radius
+    """The frozen drill-store fixture yields exactly the two incidents
+    the drill is known for: the canary BLOCK and the blast-radius
     rollback, in store order."""
     result = build_incidents(DEMO_STORE)
     assert result["trace_id"] == DRILL_TRACE
