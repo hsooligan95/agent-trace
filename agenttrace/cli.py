@@ -30,13 +30,24 @@ INGESTORS = {
 
 def cmd_ingest(args) -> int:
     total = 0
+    attempted = False
+    if getattr(args, "drop", None):
+        attempted = True
+        added, skipped = ingest_mod.ingest_drop_into_store(
+            args.store, args.drop, trace_id=args.trace_id,
+            source=args.source)
+        print(f"ingested {added} events from drop file ({args.drop})"
+              + (f"; {skipped} already in store, skipped" if skipped
+                 else ""))
+        total += added
     for kind, path in vars(args).items():
         if kind in INGESTORS and path:
+            attempted = True
             events = INGESTORS[kind][1](path)
             store_mod.append_events(args.store, events)
             print(f"ingested {len(events)} events from {INGESTORS[kind][0]} ({path})")
             total += len(events)
-    if not total:
+    if not attempted:
         print("nothing to ingest: pass at least one producer artifact", file=sys.stderr)
         return 2
     result = store_mod.verify(args.store)
@@ -175,6 +186,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ledger", help="agent-ledger OTLP JSON export")
     p.add_argument("--factoryfloor", help="factory-floor-agent trace JSONL")
     p.add_argument("--chaos", help="agent-chaos report JSON")
+    p.add_argument("--drop", help="generic drop JSONL from any project "
+                                  "(see INTEGRATION.md)")
+    p.add_argument("--trace-id", help="fallback trace ID for loose drop lines")
+    p.add_argument("--source", help="fallback source for loose drop lines")
     p.set_defaults(func=cmd_ingest)
 
     p = sub.add_parser("verify", help="verify a store's hash chain")

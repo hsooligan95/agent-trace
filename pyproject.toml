@@ -18,6 +18,7 @@ dev = [
 
 [project.scripts]
 agenttrace = "agenttrace.cli:main"
+agenttrace-run = "agenttrace.run:main"
 
 [tool.setuptools.packages.find]
 include = ["agenttrace*"]

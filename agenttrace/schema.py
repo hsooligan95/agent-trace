@@ -44,6 +44,11 @@ CORE_FIELDS = {
 # ``agent`` value (see query.event_instance).
 OPTIONAL_FIELDS = {
     "instance": str,
+    # Stable identity of the drop-file line an event was ingested
+    # from (see ingest.ingest_drop). Assigned only on the generic
+    # drop path; it is what makes drop re-ingestion idempotent.
+    # Deliberately NOT a version bump, same precedent as ``instance``.
+    "drop_id": str,
 }
 
 # Additional fields the store itself assigns on append.

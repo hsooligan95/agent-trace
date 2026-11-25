@@ -29,6 +29,23 @@ in the store, ingests the child's drop file and any `--ingest-jsonl`
 files, verifies the chain, prints the trace ID, and exits with the
 child's own exit code. The wrapped project is not modified in any way.
 
+**Multi-step work under one trace:** pass `--trace-id <id>` (and the
+same `--store`) on every invocation. Each run appends its own
+`run_started` / `run_finished` pair — and everything its child emits
+— to that same trace, so a build → test → deploy pipeline is one
+trace with three runs, not three unrelated traces:
+
+```bash
+ID=trace-release-2026-11-25
+python -m agenttrace.run --store s.jsonl --source ci --trace-id $ID -- make build
+python -m agenttrace.run --store s.jsonl --source ci --trace-id $ID -- make test
+python -m agenttrace.run --store s.jsonl --source ci --trace-id $ID -- make deploy
+```
+
+Runs under one trace are sequential: the per-trace drop file is
+shared, so don't run two invocations with the same trace ID at the
+same time.
+
 ## Step 2 — File drop: append JSON lines from any language
 
 For per-step detail, the project (or a shell wrapper around it)
@@ -49,6 +66,14 @@ Import with:
 python -m agenttrace.cli ingest --store <store.jsonl> \
     --drop <file.jsonl> --trace-id <id> --source <name>
 ```
+
+**Drop ingest is idempotent.** Every drop-ingested event carries a
+`drop_id`: a hash of its source line, the line's index in the file,
+and the trace it resolves to. Re-ingesting the same file adds zero
+events (the CLI reports how many were skipped); ingesting a file
+that grew adds only the new lines. Two identical lines in one file
+still count as two events — their indexes differ. Treat drop files
+as append-only: editing a line in place changes its identity.
 
 This is the non-Python path: a Node/TS project needs nothing but the
 ability to append a line to a file — no AgentTrace code runs in it.

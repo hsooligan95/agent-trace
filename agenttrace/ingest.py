@@ -16,11 +16,12 @@ it is returned; a producer artifact that does not fit fails loudly.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import decisions
+from . import decisions, store as store_mod
 from .redact import redact_events
 from .schema import new_event, validate_event
 
@@ -248,34 +249,76 @@ def ingest_chaos_report(path: str | Path) -> list[dict]:
 #     --trace-id / --source arguments, then from documented defaults
 #     (ts = ingest time, agent = source, kind = "event"). Remaining
 #     unrecognized keys are preserved inside the payload, never dropped.
+#
+# Idempotency: every drop-ingested event carries a ``drop_id`` -- a
+# content hash of its source line, the line's index within the file,
+# and the trace the line resolves to. ``ingest_drop_into_store``
+# skips events whose drop_id is already in the target store, so
+# re-ingesting the same file adds ZERO events and ingesting a grown
+# file adds only its new lines. Two identical lines in one file are
+# two events (their indexes differ); the same file re-ingested is
+# not. (A file edited in place shifts later lines' indexes -- treat
+# drop files as append-only, the way producers write them.)
 # ---------------------------------------------------------------------------
 
 _CORE_KEYS = {"schema_version", "trace_id", "ts", "source", "agent",
               "type", "kind", "payload", "instance"}
 
 
+def _drop_id(obj: dict, index: int, resolved_trace_id: str) -> str:
+    body = {"line": obj, "index": index, "trace_id": resolved_trace_id}
+    return hashlib.sha256(store_mod.canonical(body).encode()).hexdigest()
+
+
 def ingest_drop(path: str | Path, trace_id: str | None = None,
                 source: str | None = None) -> list[dict]:
     """Ingest a generic AgentTrace drop JSONL file (see above)."""
     events = []
-    for obj in _read_jsonl(path):
+    for index, obj in enumerate(_read_jsonl(path)):
         if not isinstance(obj, dict):
             raise ValueError(f"drop line is not a JSON object: {obj!r}")
+        resolved_trace = obj.get("trace_id") or trace_id or "trace-drop"
         if _CORE_KEYS <= set(obj):
-            events.append(obj)
-            continue
-        payload = dict(obj.get("payload") or {})
-        for key, value in obj.items():
-            if key not in _CORE_KEYS and key not in payload:
-                payload[key] = value
-        events.append(new_event(
-            trace_id=obj.get("trace_id") or trace_id or "trace-drop",
-            ts=obj.get("ts") or datetime.now(timezone.utc).isoformat(),
-            source=obj.get("source") or source or "unknown",
-            agent=obj.get("agent") or obj.get("source") or source or "unknown",
-            type=obj.get("type") or "event",
-            payload=payload,
-            kind=obj.get("kind") or "event",
-            instance=obj.get("instance"),
-        ))
+            event = dict(obj)
+        else:
+            payload = dict(obj.get("payload") or {})
+            for key, value in obj.items():
+                if key not in _CORE_KEYS and key not in payload:
+                    payload[key] = value
+            event = new_event(
+                trace_id=resolved_trace,
+                ts=obj.get("ts") or datetime.now(timezone.utc).isoformat(),
+                source=obj.get("source") or source or "unknown",
+                agent=obj.get("agent") or obj.get("source") or source
+                or "unknown",
+                type=obj.get("type") or "event",
+                payload=payload,
+                kind=obj.get("kind") or "event",
+                instance=obj.get("instance"),
+            )
+        # A line that arrives with its own drop_id keeps it (it was
+        # stamped by an earlier ingest of the same line); otherwise
+        # stamp this line's identity now.
+        event.setdefault("drop_id", _drop_id(obj, index, resolved_trace))
+        events.append(event)
     return _finish(events)
+
+
+def ingest_drop_into_store(store_path: str | Path, drop_path: str | Path,
+                           trace_id: str | None = None,
+                           source: str | None = None) -> tuple[int, int]:
+    """Ingest a drop file into a store, idempotently.
+
+    Returns (added, skipped): events whose drop_id already exists in
+    the store are skipped, so re-ingesting the same file adds 0.
+    """
+    events = ingest_drop(drop_path, trace_id=trace_id, source=source)
+    store_path = Path(store_path)
+    known: set[str] = set()
+    if store_path.exists() and store_path.read_text(encoding="utf-8").strip():
+        known = {e["drop_id"] for e in store_mod.load_events(store_path)
+                 if e.get("drop_id")}
+    fresh = [e for e in events if e["drop_id"] not in known]
+    if fresh:
+        store_mod.append_events(store_path, fresh)
+    return len(fresh), len(events) - len(fresh)

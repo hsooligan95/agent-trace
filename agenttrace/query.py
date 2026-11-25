@@ -270,17 +270,75 @@ def drill_progress(events: list[dict], trace_id: str) -> dict:
     return {"beats": beats, "complete": complete}
 
 
+# Payload keys that describe the decision itself, not its evidence.
+_DECISION_META_KEYS = frozenset({
+    "decision_point", "decider", "computed", "choice", "options",
+    "evidence",
+})
+
+
+def normalize_decision(event: dict) -> dict:
+    """One decision record, built-in or generic, in one shape.
+
+    Built-in producers (canary / gate / factory-floor) emit a bespoke
+    structure: decision_point, decider, computed, and an evidence
+    dict. Generic producers (emit() / file-drop -- e.g. music-maker's
+    score_computed, a refactor's verdict) emit a decision_record whose
+    payload is just the choice plus the deciding values loose in the
+    payload. Both are the same artifact: the point falls back to the
+    event type, the decider to the emitting agent, and the evidence
+    to the payload's non-meta fields. Nothing is invented -- a field
+    the producer did not emit stays absent, never rendered as None.
+    """
+    p = event["payload"]
+    evidence = p.get("evidence")
+    if not isinstance(evidence, dict) or not evidence:
+        evidence = {k: v for k, v in p.items()
+                    if k not in _DECISION_META_KEYS}
+    out = {
+        "decision_point": p.get("decision_point") or event["type"],
+        "decider": p.get("decider") or event["agent"],
+        "choice": p.get("choice") or "",
+        "evidence": evidence,
+    }
+    if p.get("computed") is not None:
+        out["computed"] = p["computed"]
+    if p.get("options"):
+        out["options"] = p["options"]
+    return out
+
+
+def _evidence_summary(evidence: dict, limit: int = 5) -> str:
+    """Compact ``k=v`` rendering of an evidence dict (scalars only,
+    nested values shown as their key count -- detail lives in the
+    store, the summary is a headline)."""
+    parts = []
+    for key, value in evidence.items():
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            parts.append(f"{key}={value}")
+        elif isinstance(value, (list, dict)):
+            parts.append(f"{key}[{len(value)}]")
+        if len(parts) >= limit:
+            break
+    return ", ".join(parts)
+
+
 def decision_records(events: list[dict], trace_id: str) -> list[dict]:
     """Decision-record cards for one trace, in store order."""
     out = []
     for e in query_events(events, trace_id=trace_id, kind="decision_record"):
-        p = e["payload"]
-        out.append({
+        d = normalize_decision(e)
+        card = {
             "seq": e["seq"], "ts": e["ts"], "source": e["source"],
-            "decision_point": p.get("decision_point") or e["type"],
-            "choice": p.get("choice") or "",
+            "decision_point": d["decision_point"],
+            "choice": d["choice"],
+            "decider": d["decider"],
+            "evidence": d["evidence"],
             "summary": summarize_event(e),
-        })
+        }
+        if "computed" in d:
+            card["computed"] = d["computed"]
+        out.append(card)
     return out
 
 
@@ -333,7 +391,8 @@ def _decision_incident(events: list[dict], mine: list[dict],
         "seq": anchor["seq"],
         "text": f"{p.get('decision_point') or anchor['type']}: "
                 f"{anchor['agent']} chose {p.get('choice')} "
-                f"(computed decision record, decider={p.get('decider')}).",
+                f"(computed decision record, "
+                f"decider={normalize_decision(anchor)['decider']}).",
     }]
     for reason in evidence.get("reasons") or []:
         why.append({"seq": anchor["seq"], "text": str(reason)})
@@ -1007,8 +1066,22 @@ def summarize_event(event: dict) -> str:
     p = event["payload"]
     source, etype = event["source"], event["type"]
     if event["kind"] == "decision_record":
-        return (f"DECISION {p.get('decision_point')}: {p.get('choice')} "
-                f"(decider={p.get('decider')}, computed={p.get('computed')})")
+        if p.get("decision_point") and p.get("decider") is not None \
+                and p.get("computed") is not None:
+            # Built-in bespoke shape: the original rendering, verbatim.
+            return (f"DECISION {p.get('decision_point')}: {p.get('choice')} "
+                    f"(decider={p.get('decider')}, "
+                    f"computed={p.get('computed')})")
+        # Generic shape (emit / file-drop): same headline, decider
+        # from the emitting agent, evidence from the deciding values
+        # in the payload -- absent fields are omitted, never None.
+        d = normalize_decision(event)
+        summary = (f"DECISION {d['decision_point']}: {d['choice']} "
+                   f"(decider={d['decider']})")
+        evidence = _evidence_summary(d["evidence"])
+        if evidence:
+            summary += f" evidence: {evidence}"
+        return summary
     if source == "agent-canary" and etype == "compare_verdict":
         return (f"compare {p.get('base_version')} vs {p.get('candidate_version')}: "
                 f"decision={p.get('decision')} reasons={len(p.get('reasons', []))}")
