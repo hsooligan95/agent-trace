@@ -46,12 +46,41 @@ def cmd_ingest(args) -> int:
 
 def cmd_verify(args) -> int:
     result = store_mod.verify(args.store)
-    if result.ok:
-        print(f"Chain OK — {result.count} events, every hash verified.")
+    if not result.ok:
+        print(f"Chain BROKEN at seq {result.broken_seq}: {result.detail} "
+              f"({result.count} events in store)")
+        return 1
+    print(f"Chain OK — {result.count} events, every hash verified.")
+    if not args.anchors:
         return 0
-    print(f"Chain BROKEN at seq {result.broken_seq}: {result.detail} "
-          f"({result.count} events in store)")
+    # Strict mode (Red Team F1): the chain alone proves consistency,
+    # not provenance -- check the signed head against the anchor log.
+    from . import anchor as anchor_mod
+    try:
+        key = anchor_mod.key_from_env()
+    except ValueError as exc:
+        print(f"anchored verification unavailable: {exc}", file=sys.stderr)
+        return 2
+    anchored = anchor_mod.verify_against_anchors(args.store, args.anchors, key)
+    if anchored.ok:
+        print(f"Anchor OK — {anchored.detail}")
+        return 0
+    print(f"Anchor FAILED — {anchored.detail}")
     return 1
+
+
+def cmd_anchor(args) -> int:
+    from . import anchor as anchor_mod
+    try:
+        key = anchor_mod.key_from_env()
+        entry = anchor_mod.anchor_store(
+            args.store, args.anchors, key, environment=args.environment or "")
+    except ValueError as exc:
+        print(f"cannot anchor: {exc}", file=sys.stderr)
+        return 2
+    print(f"anchored {entry['event_count']} events, head {entry['head'][:16]}... "
+          f"signature {entry['signature'][:16]}... -> {args.anchors}")
+    return 0
 
 
 def cmd_query(args) -> int:
@@ -150,7 +179,19 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("verify", help="verify a store's hash chain")
     p.add_argument("--store", required=True)
+    p.add_argument("--anchors",
+                   help="anchor log to also check the signed chain head "
+                        "against (strict mode; needs AGENTTRACE_SIGNING_KEY)")
     p.set_defaults(func=cmd_verify)
+
+    p = sub.add_parser("anchor", help="sign the store's chain head and "
+                                      "append it to the anchor log")
+    p.add_argument("--store", required=True)
+    p.add_argument("--anchors", required=True,
+                   help="anchor log file (created if absent)")
+    p.add_argument("--environment",
+                   help="where this anchor was taken (ci / local / ...)")
+    p.set_defaults(func=cmd_anchor)
 
     p = sub.add_parser("query", help="query events in a store")
     p.add_argument("--store", required=True)

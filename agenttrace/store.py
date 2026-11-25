@@ -8,6 +8,11 @@ link, and the verifier names the exact ``seq`` where it breaks.
 
 The store is deliberately just a file: no server, no account. That is
 the portfolio contract -- a reviewer can run the verifier in seconds.
+
+Scope note: this chain proves internal consistency. Provenance --
+proof that a chain was produced by the fleet and not rewritten
+wholesale by someone who recomputed every hash -- comes from the
+signed, externally anchored chain heads in anchor.py (the F1 fix).
 """
 
 from __future__ import annotations

@@ -85,11 +85,19 @@ The rendered timeline (from the store alone — the renderer never opens a produ
 
 ## Nightly CI proof — active
 
-The drill above is not a one-off capture. A GitHub Actions workflow — `.github/workflows/nightly-drill.yml`, nightly at 06:23 UTC and on manual dispatch — re-runs it end to end: fresh checkouts of all seven repos at `main` in the side-by-side layout the drill expects, every producer environment rebuilt, `drill/run_drill.py` run **unmodified**, and the produced store re-verified cold by `ci/make_status.py` (chain check, the one-byte tamper probe repeated against the finished store, and the cost line recomputed from the ledger span events — if the chain does not verify, the run goes red and no status is published). Each run uploads the full drill output as an artifact and commits two small files back to this repo: [`ci/last-drill.json`](ci/last-drill.json) (date, trace ID, event count, chain verdict, cost line) and [`ci/last-drill-timeline.md`](ci/last-drill-timeline.md) (that night's rendered timeline). The glue is `ci/run_drill_ci.sh` — the workflow only checks out, sets up Python/Node, and calls it.
+The drill above is not a one-off capture. A GitHub Actions workflow — `.github/workflows/nightly-drill.yml`, nightly at 06:23 UTC and on manual dispatch — re-runs it end to end: fresh checkouts of all seven repos at `main` in the side-by-side layout the drill expects, every producer environment rebuilt, `drill/run_drill.py` run **unmodified**, and the produced store re-verified cold by `ci/make_status.py` (chain check, the one-byte tamper probe repeated against the finished store, and the cost line recomputed from the ledger span events — if the chain does not verify, the run goes red and no status is published). Each run uploads the full drill output as an artifact and commits small files back to this repo: [`ci/last-drill.json`](ci/last-drill.json) (date, trace ID, event count, chain verdict, cost line), [`ci/last-drill-timeline.md`](ci/last-drill-timeline.md) (that night's rendered timeline), and — since the F1 fix below — one new line in `ci/chain-anchors.jsonl` (that night's signed chain head). The glue is `ci/run_drill_ci.sh` — the workflow only checks out, sets up Python/Node, and calls it.
 
 The commit-back runs under the workflow's own `GITHUB_TOKEN` (`contents: write`), which can push status files to its own repo; it cannot loop — token pushes don't trigger workflow runs, this workflow has no push trigger anyway, and the commit message carries `[skip ci]`.
 
 **Status: ACTIVE.** The workflow runs nightly at 06:23 UTC and on manual dispatch. Its first real run succeeded on 2026-11-21 ([run 44985680763](https://github.com/hsooligan95/agent-trace/actions/runs/44985680763), success in 1m 49s): 117 events, chain verdict "Chain OK — 117 events, every hash verified", the tamper probe detected at exactly seq 8, cost $0.57313 — and the status was committed back by `github-actions[bot]` as `eebfc4b`. For the latest run's status, see [`ci/last-drill.json`](ci/last-drill.json). One honest footnote on how it got here: the workflow file itself was created through the GitHub web UI, because the fine-grained API token used to maintain these repos lacks the Workflows permission and cannot push workflow files by API; everything after that — the runs, the verification, the commit-back — is the workflow's own doing. Before activation, the exact CI steps were also run end to end locally against fresh clones of the seven public repos (trace `trace-drill-2f982e14`: 117 events, chain OK, tamper probe at seq 8, cost line 42 spans · 31 billable steps · $0.57313), so the first green run was a confirmation, not a surprise.
+
+## Signed chain heads — the F1 fix
+
+A hash chain alone proves *internal consistency*, not provenance: anyone who can write the store can rewrite it end to end, recompute every hash, and produce a store that verifies "Chain OK." An internal red-team audit (Run #1, finding F1) demonstrated exactly that against this store. The fix, in `agenttrace/anchor.py`:
+
+- **The chain head is signed.** Each night's head (trace ID + event count + head hash) is signed with HMAC-SHA256 under a key that lives outside the trace data — the `AGENTTRACE_SIGNING_KEY` repository secret in CI, an environment variable locally. Store writers never hold the key, so a rewritten history cannot mint a valid signature for its new head. (Symmetric by design at this scale: the verifier in CI holds the key; the writers of the store do not. The key itself never appears in the repo, the store, or the log — only a short fingerprint of it.)
+- **The signed head is anchored externally.** Signed heads are appended to `ci/chain-anchors.jsonl`, committed back by the workflow, so git history witnesses them. Each anchor also signs the previous anchor's signature, chaining the log itself: editing or deleting a past anchor breaks every later signature. Rewriting the trace history cannot rewrite the anchor without also rewriting the repo's witnessed history.
+- **Anchored verification fails, it doesn't flag.** `agenttrace verify --store <store> --anchors ci/chain-anchors.jsonl` (with the key in the environment) fails on a broken chain, on a forged inserted event, on a full-history rewrite, and on a tampered anchor log — while an untampered anchored history still verifies clean, and plain `verify` (chain only) behaves exactly as before for existing histories. In the nightly run, if the anchor log itself fails verification, no new head is anchored, a failure record is appended to the log, and the run goes red with the failing detail and the last good anchor.
 
 ## The live dashboard (phase 2)
 
@@ -178,6 +186,7 @@ Every event carries `schema_version` (currently `"1"`). Ingestion and verificati
 agenttrace/
   schema.py     versioned event schema; loud failure on unknown versions
   store.py      append-only hash-chained JSONL store + verifier
+  anchor.py     signed chain heads + the external anchor log (F1 fix)
   ingest.py     one ingestor per producer (canary, gate, blast-radius,
                 ledger OTLP, factory-floor, chaos)
   decisions.py  decision-record extractors (computed decision points only)
@@ -187,7 +196,7 @@ agenttrace/
                 decision cards, cost breakdown)
   replay.py     TraceReplay: step/state reconstruction + trace diffs
   render.py     one-page tree/timeline from the store alone
-  cli.py        ingest / verify / query / render / replay / diff
+  cli.py        ingest / verify / anchor / query / render / replay / diff
 rust/agenttrace-verify/  standalone Rust chain verifier (accent; the
                 Python verifier remains primary — verified to agree
                 with it, see its README)
@@ -196,8 +205,8 @@ dashboard/      the read-only live view (server.py: stdlib-only server;
                 drill and ingests artifacts as producers emit them)
 drill/          the flagship drill (run_drill.py + gate_driver.mjs)
 samples/        real producer outputs used by the contract tests
-tests/          schema, store/chain/tamper, ingest contracts, decisions,
-                query/render, redaction, TraceReplay, Rust agreement
+tests/          schema, store/chain/tamper, anchor (F1), ingest contracts,
+                decisions, query/render, redaction, TraceReplay, Rust agreement
 ```
 
 ## Honest limitations

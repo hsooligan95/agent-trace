@@ -14,6 +14,18 @@ writes nothing: a red nightly run must never publish a green status.
 Outputs (into --ci-dir, committed back to this repo by the workflow):
   last-drill.json          machine-readable status (see fields below)
   last-drill-timeline.md   copy of the drill's rendered timeline
+  chain-anchors.jsonl      append-only log of signed chain heads
+                           (only when AGENTTRACE_SIGNING_KEY is set --
+                           see agenttrace/anchor.py; the F1 fix)
+
+Anchoring: with the signing key present, the finished store's chain
+head is signed and appended to the anchor log, after the existing
+log's signatures are re-verified. If the log does not verify (a past
+anchor was altered, or the key changed), NO new head is anchored, a
+failure record is appended to the log instead, and this script exits
+non-zero with the failing detail and the last good anchor -- a
+rewritten history must turn the nightly run red, never publish a
+green status over it.
 
 Run:  .venv/bin/python ci/make_status.py --out-dir drill/output/<trace-id>
 """
@@ -22,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from collections import Counter
@@ -31,7 +44,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from agenttrace import store  # noqa: E402
+from agenttrace import anchor, store  # noqa: E402
 
 
 def tamper_probe(store_path: Path, tmp_path: Path) -> dict:
@@ -108,6 +121,48 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
+    # F1 anchoring: sign this run's chain head into the external
+    # anchor log -- but only on top of a log that itself verifies.
+    anchors_path = ci_dir / "chain-anchors.jsonl"
+    signing_key = os.environ.get(anchor.ENV_VAR, "")
+    if signing_key:
+        try:
+            anchor.key_from_env()
+        except ValueError as exc:
+            print(f"ANCHOR FAILED: {exc}", file=sys.stderr)
+            return 1
+        log_result = anchor.verify_anchor_log(anchors_path, signing_key)
+        if not log_result.ok:
+            streak = anchor.append_failure_record(
+                anchors_path, log_result.detail, log_result.last_good_anchor)
+            print(f"ANCHOR VERIFICATION FAILED: {log_result.detail}",
+                  file=sys.stderr)
+            print(f"last good anchor: "
+                  f"{json.dumps(log_result.last_good_anchor)}",
+                  file=sys.stderr)
+            print(f"consecutive anchor failures: {streak} "
+                  f"(no new head anchored)", file=sys.stderr)
+            return 1
+        entry = anchor.anchor_store(store_path, anchors_path, signing_key,
+                                    environment=args.environment)
+        chain_anchor = {
+            "anchored": True,
+            "trace_id": entry["trace_id"],
+            "event_count": entry["event_count"],
+            "head": entry["head"],
+            "signature": entry["signature"],
+            "key_id": entry["key_id"],
+            "anchored_at": entry["anchored_at"],
+            "anchors_total": anchor.verify_anchor_log(
+                anchors_path, signing_key).anchors_checked,
+        }
+    else:
+        chain_anchor = {
+            "anchored": False,
+            "reason": f"{anchor.ENV_VAR} is not set in this environment; "
+                      f"chain head not signed",
+        }
+
     now = datetime.now(timezone.utc)
     status = {
         "trace_id": trace_ids[0],
@@ -127,6 +182,7 @@ def main() -> int:
                      f"steps · total ${total_cost:.5f}"),
         },
         "tamper_probe": probe,
+        "chain_anchor": chain_anchor,
     }
 
     ci_dir.mkdir(parents=True, exist_ok=True)
