@@ -232,3 +232,50 @@ def ingest_chaos_report(path: str | Path) -> list[dict]:
             instance=report.get("instance"),
         ))
     return _finish(events)
+
+
+# ---------------------------------------------------------------------------
+# Generic drop-file ingestor -- the plug-and-play path for ANY project.
+#
+# A drop file is plain JSONL, one object per line, written by
+# agenttrace.emit, by a few lines of any language (Node/TS included --
+# no AgentTrace code needs to run in the host project), or by hand.
+# Each line is either:
+#   * a full pre-store event (schema_version/trace_id/ts/source/agent/
+#     type/kind/payload), used exactly as written, or
+#   * a loose record {"type": ..., "payload": {...}, ...} -- missing
+#     core fields are filled from the line itself, then from the
+#     --trace-id / --source arguments, then from documented defaults
+#     (ts = ingest time, agent = source, kind = "event"). Remaining
+#     unrecognized keys are preserved inside the payload, never dropped.
+# ---------------------------------------------------------------------------
+
+_CORE_KEYS = {"schema_version", "trace_id", "ts", "source", "agent",
+              "type", "kind", "payload", "instance"}
+
+
+def ingest_drop(path: str | Path, trace_id: str | None = None,
+                source: str | None = None) -> list[dict]:
+    """Ingest a generic AgentTrace drop JSONL file (see above)."""
+    events = []
+    for obj in _read_jsonl(path):
+        if not isinstance(obj, dict):
+            raise ValueError(f"drop line is not a JSON object: {obj!r}")
+        if _CORE_KEYS <= set(obj):
+            events.append(obj)
+            continue
+        payload = dict(obj.get("payload") or {})
+        for key, value in obj.items():
+            if key not in _CORE_KEYS and key not in payload:
+                payload[key] = value
+        events.append(new_event(
+            trace_id=obj.get("trace_id") or trace_id or "trace-drop",
+            ts=obj.get("ts") or datetime.now(timezone.utc).isoformat(),
+            source=obj.get("source") or source or "unknown",
+            agent=obj.get("agent") or obj.get("source") or source or "unknown",
+            type=obj.get("type") or "event",
+            payload=payload,
+            kind=obj.get("kind") or "event",
+            instance=obj.get("instance"),
+        ))
+    return _finish(events)
